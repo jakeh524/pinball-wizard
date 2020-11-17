@@ -24,7 +24,8 @@ class Pinball extends Actor
     constructor(pos_x,pos_y,world,shape,material)
     {
         super(pos_x,pos_y,world)
-        this.velocity=0;
+        this.velocity_x=0;
+        this.velocity_y=0;
         this.angle=0;
         this.alive=true
         this.shape=shape;
@@ -42,11 +43,11 @@ class Pinball extends Actor
 
     doSomething(context,program_state)
     {
-
+        this.move(program_state);
         let model_transform=Mat4.identity().times(Mat4.translation(this.pos_x,this.pos_y,3))
         //collision_adjust();
-        //this.move();
-        if (this.y_pos<3.9)
+        
+        if (this.pos_y<3.9)
         {
             this.alive=false;
             return;
@@ -60,35 +61,53 @@ class Pinball extends Actor
 
 
     }
-    set_into_motion(velocity,angle,program_state)
+    get_launched(speed)
     {
-        this.time=program_state.animation_time / 1000;
-        this.angle=angle;
+       
+        this.velocity_x=-1*speed;
+        this.velocity_y=3*speed;
         this.launched=true;
     }
-    move(time)
+    move(program_state)
     {
         //current_time=program_state.animation_time / 1000;
-        let gravity=6
-        this.x_pos=this.velocity*(current_time-this.time)*Math.cos(this.angle)
-        this.y_pos=.5*gravity*((current_time-this.time)**2) + this.velocity*Math.sin(this.angle)+this.starting_height;
-
+        let gravity=6;
+        let dt = program_state.animation_delta_time / 1000;
+        if (this.launched)
+        {
+        this.velocity_y-=gravity*dt;
+        }
+        this.pos_x=this.pos_x+this.velocity_x*dt;
+        this.pos_y=this.pos_y+this.velocity_y*dt;
     }
 
     //  check_for_death(){}
 
 }
-/*
+
 class Obstacle{
-    constructor(pos_x,pos_y,springiness,light_effect,sound_effect)
-    this.springiness=springiness;
+    constructor(pos_x,pos_y,springiness,shape,material)//,light_effect,sound_effect)
+    {this.springiness=springiness;
     this.pos_x=pos_x;
     this.pos_y=pos_y;
     this.last_hit=0;
-    this.light_effect=light_effect;
-    this.sound_effect=sound_effect;
+    this.shape=shape;
+    this.material=material;
+    }
+
+    doSomething(context,program_state)
+    {
+        
+        let model_transform=Mat4.identity().times(Mat4.translation(this.pos_x,this.pos_y,3))
+        //collision_adjust();
+        
+
+        this.shape.draw(context,program_state,model_transform,this.material)
+    //this.light_effect=light_effect;
+   // this.sound_effect=sound_effect;
 }
-*/
+}
+
 //class Nail extends Obstacle, defs.Cube
 //{
 
@@ -121,7 +140,10 @@ export class PinballWorld extends Scene {
         this.game_started=false;
         this.launch_speed=0;
         this.PinballArray=[];
-        this.ObstacleArray=[];
+        this.ObstacleArray=[new Obstacle(10,10,0,this.shapes.cube,this.materials.pinball),
+        new Obstacle(30,10,0,this.shapes.cube,this.materials.pinball),
+        new Obstacle(20,35,0,this.shapes.cube,this.materials.pinball), new Obstacle(15,42,0,this.shapes.cube,this.materials.pinball),
+        new Obstacle(8,40,0,this.shapes.cube,this.materials.pinball),new Obstacle(20,20,0,this.shapes.cube,this.materials.pinball)];
         this.initial_camera_location = Mat4.look_at(vec3(0, 10, 20), vec3(0, 0, 0), vec3(0, 1, 0));
 
 
@@ -159,6 +181,13 @@ export class PinballWorld extends Scene {
             // PinballArray[i]=null;
 
         }
+        for  (i=0; i<this.ObstacleArray.length;i++)
+        {
+            
+            this.ObstacleArray[i].doSomething(context,program_state);
+          
+
+        }
         if (this.game_started&&launcher_empty) this.PinballArray.push(new Pinball(31,4,this,this.shapes.sphere,this.materials.pinball));
         //We set the light at the o
 
@@ -169,21 +198,21 @@ export class PinballWorld extends Scene {
         this.key_triggered_button("Start Game", ["Control", "0"], () => this.game_started=true)
         this.new_line();
         this.key_triggered_button("Pull spring back more", ["Control", "1"], () => this.launch_speed=Math.min(10,this.launch_speed+1));
-        this.key_triggered_button("Pull spring back less", ["Control", "2"], () => this.launch_speed==Math.max(0,this.launch_speed-1));
+        this.key_triggered_button("Pull spring back less", ["Control", "2"], () => this.launch_speed=Math.max(0,this.launch_speed-1));
         this.new_line();
-        this.key_triggered_button("Launch Pinball", ["Control", "3"], () => launch_ball());
+        this.key_triggered_button("Launch Pinball", ["Control", "3"], () => this.launch_ball());
         //this.key_triggered_button("Attach to planet 4", ["Control", "4"], () => this.attached = () => this.planet_4);
         //this.new_line();
 
     }
-    launch_ball(program_state)
+    launch_ball()
     {
      var i;
         for  (i=0; i<this.PinballArray.length;i++)
         {
             if (this.PinballArray[i].launched==false)
             {
-
+                this.PinballArray[i].get_launched(this.launch_speed);
                 break;
             }
 
