@@ -5,55 +5,53 @@
 //assignment3.js
 
 import {defs, tiny} from './examples/common.js';
-
+import {Body,Simulation} from "./examples/collisions-demo.js"
 const {
     Vector, Vector3, vec, vec3, vec4, color, hex_color, Shader, Matrix, Mat4, Light, Shape, Material, Scene,
 } = tiny;
 
-class Actor
+
+class Pinball extends Body
 {
-    constructor(pos_x,pos_y,world)
+    constructor(world,shape,material)
     {
-        this.pos_x=pos_x;
-        this.pos_y=pos_y;
+        super(world.shapes.sphere,world.materials.pinball,vec3(1,1,1))
+
+        
+       
+       
+        this.alive=true;
         this.world=world;
-    }
-}
-class Pinball extends Actor
-{
-    constructor(pos_x,pos_y,world,shape,material)
-    {
-        super(pos_x,pos_y,world)
-        this.velocity_x=0;
-        this.velocity_y=0;
-        this.angle=0;
-        this.alive=true
-        this.shape=shape;
-        this.material=material;
-        this.world=world;
-        this.starting_height=4;
-        this.time=0;
         this.launched=false;
+
         // this.trapped
+        let model_transform=Mat4.identity().times(Mat4.translation(31,4,3))
+        //collision_adjust();
+        this.emplace(model_transform,vec3(0,0,0),0)
 
     }
 
-    // isAlive()
-    // {return this.alive;}
-
-    doSomething(context,program_state)
+    doSomething(dt)
     {
-        this.move(program_state);
-        let model_transform=Mat4.identity().times(Mat4.translation(this.pos_x,this.pos_y,3))
+        if (!this.launched && this.world.launch_ball) this.get_launched(this.world.launch_speed);
+        this.apply_gravity(dt);
         //collision_adjust();
         
-        if (this.pos_y<3.9)
+        
+        let detected_body= this.world.collide_check(this);
+        if (detected_body!=null) 
+        {
+        this.alive=false;
+        return;
+        }
+       
+        if (this.center[1]<3.9)
         {
             this.alive=false;
             return;
         }
-
-        this.shape.draw(context,program_state,model_transform,this.material)
+        
+       
 
 
 
@@ -61,58 +59,48 @@ class Pinball extends Actor
 
 
     }
+  
     get_launched(speed)
     {
-       
-        this.velocity_x=-1*speed;
-        this.velocity_y=3*speed;
+        this.linear_velocity=vec3(-1*speed,3*speed,0)
         this.launched=true;
+        this.world.launch_ball=false;
+        this.world.ball_in_launcher=false;
     }
-    move(program_state)
+
+
+    apply_gravity(dt)
     {
         //current_time=program_state.animation_time / 1000;
         let gravity=6;
-        let dt = program_state.animation_delta_time / 1000;
         if (this.launched)
         {
-        this.velocity_y-=gravity*dt;
+        this.linear_velocity[1]-=gravity*dt;
         }
-        this.pos_x=this.pos_x+this.velocity_x*dt;
-        this.pos_y=this.pos_y+this.velocity_y*dt;
+        
     }
 
     //  check_for_death(){}
 
 }
 
-class Obstacle{
-    constructor(pos_x,pos_y,springiness,shape,material)//,light_effect,sound_effect)
-    {this.springiness=springiness;
-    this.pos_x=pos_x;
-    this.pos_y=pos_y;
-    this.last_hit=0;
-    this.shape=shape;
-    this.material=material;
+class Obstacle extends Body{
+    constructor(model_transform,springiness,shape,material)//,light_effect,sound_effect)
+    {
+        super(shape,material,vec3(1,1,1))
+        this.springiness=springiness;
+        this.emplace(model_transform,vec3(0,0,0),0)
+    
     }
 
-    doSomething(context,program_state)
+    doSomething(dt)
     {
         
-        let model_transform=Mat4.identity().times(Mat4.translation(this.pos_x,this.pos_y,3))
-        //collision_adjust();
-        
+    }
+  }
 
-        this.shape.draw(context,program_state,model_transform,this.material)
-    //this.light_effect=light_effect;
-   // this.sound_effect=sound_effect;
-}
-}
 
-//class Nail extends Obstacle, defs.Cube
-//{
-
-//}
-export class PinballWorld extends Scene {
+export class PinballWorld extends Simulation {
     constructor() {
         // constructor(): Scenes begin by populating initial values like the Shapes and Materials they'll need.
         super();
@@ -134,64 +122,73 @@ export class PinballWorld extends Scene {
             pinball: new Material(new defs.Phong_Shader(),
                 {ambient: .4, diffusivity: 1, specularity:1, color: hex_color("#ffffff")}),
 
-
         }
+
         this.balls_remaining=0;
         this.game_started=false;
         this.launch_speed=0;
-        this.PinballArray=[];
-        this.ObstacleArray=[new Obstacle(10,10,0,this.shapes.cube,this.materials.pinball),
-        new Obstacle(30,10,0,this.shapes.cube,this.materials.pinball),
-        new Obstacle(20,35,0,this.shapes.cube,this.materials.pinball), new Obstacle(15,42,0,this.shapes.cube,this.materials.pinball),
-        new Obstacle(8,40,0,this.shapes.cube,this.materials.pinball),new Obstacle(20,20,0,this.shapes.cube,this.materials.pinball)];
+        this.ball_in_launcher=false;
+        this.launch_ball=false;
+        
+        
+        
         this.initial_camera_location = Mat4.look_at(vec3(0, 10, 20), vec3(0, 0, 0), vec3(0, 1, 0));
 
-
-    }
-    draw_board(context,program_state)
-    {
-        let model_transform = Mat4.identity();
+         let model_transform = Mat4.identity();
 
         const machine_color= color(.5,0,.5,1);
 
-
-        //program_state.lights = [new Light(sun_light_position, color(1,1,1,1), 10**3)];
-        let below_transform=model_transform.times(Mat4.translation(16,24,1)).times(Mat4.scale(16,24,1))
-        this.shapes.cube.draw(context, program_state, below_transform, this.materials.pinball.override({color: machine_color}));
+         //program_state.lights = [new Light(sun_light_position, color(1,1,1,1), 10**3)];
+        
+       
+        
 
         let left_transform=model_transform.times(Mat4.translation(1,24,4)).times(Mat4.scale(1,24,4));
         let right_transform=model_transform.times(Mat4.translation(33,24,4)).times(Mat4.scale(1,24,4));
         let bottom_transform=model_transform.times(Mat4.translation(17,1,4)).times(Mat4.scale(16,1,4));
         let top_transform=model_transform.times(Mat4.translation(17,47,4)).times(Mat4.scale(16,1,4));
 
-        this.shapes.cube.draw(context, program_state, left_transform, this.materials.pinball.override({color: machine_color}));
-        this.shapes.cube.draw(context, program_state, right_transform, this.materials.pinball.override({color: machine_color}));
-        this.shapes.cube.draw(context, program_state, top_transform, this.materials.pinball.override({color: machine_color}));
-        this.shapes.cube.draw(context, program_state, bottom_transform, this.materials.pinball.override({color: machine_color}));
-
-        let launcher_empty=true;
+       
+        this.bodies=[new Obstacle(left_transform,0,this.shapes.cube, this.materials.pinball.override({color: machine_color})),
+        new Obstacle(right_transform,0,this.shapes.cube, this.materials.pinball.override({color: machine_color})),
+        new Obstacle(bottom_transform,0,this.shapes.cube, this.materials.pinball.override({color: machine_color})),
+        new Obstacle(top_transform,0,this.shapes.cube, this.materials.pinball.override({color: machine_color}))
+        ]
 
         var i;
-        for  (i=0; i<this.PinballArray.length;i++)
+        var j;
+        for (i=5;i<40;i+=5)
         {
-            if (this.PinballArray[i].launched==false) launcher_empty=false;
-            // if (PinballArray[i]!=null)
-            this.PinballArray[i].doSomething(context,program_state);
-            // if (PinballArray[i].isAlive()==false)
-            // PinballArray[i]=null;
-
+            for (j=5;j<30;j+=5)
+            {
+                let obj_transform=Mat4.identity().times(Mat4.translation(j,i,3));
+                this.bodies.push(new Obstacle(obj_transform,0,this.shapes.cube, this.materials.pinball))
+            }
         }
-        for  (i=0; i<this.ObstacleArray.length;i++)
+
+    }
+
+
+
+
+    
+    collide_check(ball)
+    {
+        if (ball.launched==false) return null;
+        var i;
+       
+         for  (i=0; i<this.bodies.length;i++)
         {
-            
-            this.ObstacleArray[i].doSomething(context,program_state);
+            ball.inverse=Mat4.inverse(ball.drawn_location)
+            if(this.bodies[i].center[1]!=4&&ball.check_if_colliding(this.bodies[i], {intersect_test: Body.intersect_sphere, points: new defs.Subdivision_Sphere(1), leeway: .5}))
+            return this.bodies[i];
           
 
         }
-        if (this.game_started&&launcher_empty) this.PinballArray.push(new Pinball(31,4,this,this.shapes.sphere,this.materials.pinball));
-        //We set the light at the o
-
+        return null;
     }
+    
+
 
     make_control_panel(context,program_state) {
         // Draw the scene's buttons, setup their actions and keyboard shortcuts, and monitor live measurements.
@@ -200,24 +197,15 @@ export class PinballWorld extends Scene {
         this.key_triggered_button("Pull spring back more", ["Control", "1"], () => this.launch_speed=Math.min(10,this.launch_speed+1));
         this.key_triggered_button("Pull spring back less", ["Control", "2"], () => this.launch_speed=Math.max(0,this.launch_speed-1));
         this.new_line();
-        this.key_triggered_button("Launch Pinball", ["Control", "3"], () => this.launch_ball());
+        this.key_triggered_button("Launch Pinball", ["Control", "3"], () => {if (this.ball_in_launcher) this.launch_ball=true; });
         //this.key_triggered_button("Attach to planet 4", ["Control", "4"], () => this.attached = () => this.planet_4);
         //this.new_line();
 
     }
-    launch_ball()
-    {
-     var i;
-        for  (i=0; i<this.PinballArray.length;i++)
-        {
-            if (this.PinballArray[i].launched==false)
-            {
-                this.PinballArray[i].get_launched(this.launch_speed);
-                break;
-            }
 
-        }
-    }
+
+
+    
 
     display(context,program_state) {
 
@@ -232,17 +220,21 @@ export class PinballWorld extends Scene {
         program_state.projection_transform = Mat4.perspective(
             Math.PI / 4, context.width / context.height, .1, 1000);
 
-
+      
         
         const sun_light_position = vec4(0,0,0,1);
 
-
+const machine_color= color(.5,0,.5,1);
         program_state.lights = [new Light(sun_light_position, color(1,1,1,1), 10**3)];
-        const t = program_state.animation_time / 1000, dt = program_state.animation_delta_time / 1000;
+        //const t = program_state.animation_time / 1000, dt = program_state.animation_delta_time / 1000;
+        let model_transform=Mat4.identity();
+        let below_transform=model_transform.times(Mat4.translation(16,24,1)).times(Mat4.scale(16,24,1))
+        this.shapes.cube.draw(context, program_state, below_transform, this.materials.pinball.override({color: machine_color}));
+       super.display(context,program_state);
 
+        
 
-        this.draw_board(context,program_state);
-
+       
 
 
 
@@ -256,7 +248,6 @@ export class PinballWorld extends Scene {
             //back 5 units
             const blending_factor=.1; //How much we want to blend the desired matrix into our current one. Lower means the camera moves slower.
             const mixed=desired.map( (x,i) => Vector.from( program_state.camera_transform[i] ).mix( x, blending_factor ) )
-
             program_state.set_camera(Mat4.inverse(mixed))
             //Must pass in inverse to set camera function
         }
@@ -266,12 +257,45 @@ export class PinballWorld extends Scene {
             //(blending the inverse would be useless)
             const blending_factor=.1;
             const mixed=desired.map( (x,i) => Vector.from( program_state.camera_transform[i] ).mix( x, blending_factor ) )
-
             program_state.set_camera(Mat4.inverse(mixed))
-
        }
-
         */
+    }
+    update_state(dt)
+    {
+        
+     
+
+        var i;
+        for  (i=0; i<this.bodies.length;i++)
+        {
+         
+            // if (PinballArray[i]!=null)
+            this.bodies[i].doSomething(dt);
+            // if (PinballArray[i].isAlive()==false)
+            // PinballArray[i]=null;
+
+        }
+      
+        if (this.game_started&&this.ball_in_launcher==false) 
+        {
+            
+        this.bodies.push(new Pinball(this,this.shapes.sphere,this.materials.pinball));
+        this.ball_in_launcher=true;
+
+        }
+        for  (i=0; i<this.bodies.length;i++)
+        {
+            if (this.bodies[i].alive==false)
+            // if (PinballArray[i]!=null)
+            this.bodies.splice(i,1);
+            // if (PinballArray[i].isAlive()==false)
+            // PinballArray[i]=null;
+
+        }
+        
+        //We set the light at the o
+
     }
 }
 
@@ -294,7 +318,6 @@ class Gouraud_Shader extends Shader {
         uniform float light_attenuation_factors[N_LIGHTS];
         uniform vec4 shape_color;
         uniform vec3 squared_scale, camera_center;
-
         // Specifier "varying" means a variable's final value will be passed from the vertex shader
         // on to the next phase (fragment shader), then interpolated per-fragment, weighted by the
         // pixel fragment's proximity to each of the 3 vertices (barycentric interpolation).
@@ -314,7 +337,6 @@ class Gouraud_Shader extends Shader {
                 vec3 surface_to_light_vector = light_positions_or_vectors[i].xyz - 
                                                light_positions_or_vectors[i].w * vertex_worldspace;                                             
                 float distance_to_light = length( surface_to_light_vector );
-
                 vec3 L = normalize( surface_to_light_vector );
                 vec3 H = normalize( L + E );
                 // Compute the diffuse and specular components from the Phong
@@ -349,7 +371,6 @@ class Gouraud_Shader extends Shader {
                 vec4 color = vec4(shape_color.xyz * ambient,shape_color.w);
                 color.xyz += phong_model_lights(normalize(N),vertex_worldspace);
                 Vertex_color=color; //color calculation occurs in vertex shader
-
             } `;
     }
 
@@ -455,7 +476,6 @@ class Ring_Shader extends Shader {
         void main(){
           gl_Position = projection_camera_model_transform * vec4( position, 1.0 );
           
-
           center=model_transform * vec4(0.0,0.0,0.0,1.0);
           point_position= model_transform*vec4(position,1.0);
           //Global position of a vertex is simply relative position left-multiplied by basis of object
@@ -472,14 +492,10 @@ class Ring_Shader extends Shader {
           //Make ambience of the orange color dependent on how far the point on the torus is from the center of the torus
           // , which is the same as the center of the planet. We use sin to create oscillation for the ring effect, and multiply
           //by a large frequency to get a lot of rings
-
           gl_FragColor=vec4(1.0,.6,.3,1.0)*ambient; //Want to use same color as third planet times the ambience
           //we calculated above
           //model_transform is the planet basis
           
-
         }`;
     }
 }
-
-
