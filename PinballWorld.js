@@ -181,9 +181,12 @@ export class PinballWorld extends Simulation {
 
         };
 
+
         this.time_scale/=800;
 
         
+
+
 
 
         //texture stuff
@@ -197,7 +200,10 @@ export class PinballWorld extends Simulation {
             pinball: new Material(bump, (new defs.Phong_Shader(),
                 {ambient: 0.5, diffusivity: 0.5, specularity: 0.5, texture: new Texture("assets/pinball_metal.png")})),
             wall: new Material(bump, (new defs.Phong_Shader(),
+
                 {ambient: 1, diffusivity: 0.5, specularity: 0.5, texture: new Texture("assets/wood.jpg")})),
+
+
             nail: new Material(new defs.Phong_Shader(),
                 {ambient: 1, diffusivity: 0.5, specularity: 0.5, color: hex_color("#ffffff")}),
             floor: new Material(bump, (new defs.Phong_Shader(),
@@ -210,7 +216,6 @@ export class PinballWorld extends Simulation {
         this.launch_speed=0;
         this.ball_in_launcher=false;
         this.launch_ball=false;
-
 
 
 
@@ -231,11 +236,12 @@ export class PinballWorld extends Simulation {
         let top_transform=model_transform.times(Mat4.translation(17,47,4)).times(Mat4.scale(16,1,4));
 
 
+
         this.bodies=[new Obstacle(left_transform,0,this.shapes.cube, this.materials.wall),
             new Obstacle(right_transform,0,this.shapes.cube, this.materials.wall),
             new Obstacle(bottom_transform,0,this.shapes.cube, this.materials.wall),
-            new Obstacle(top_transform,0,this.shapes.cube, this.materials.wall)
-        ]
+            new Obstacle(top_transform,0,this.shapes.cube, this.materials.wall)]
+
 
         var i;
         var j;
@@ -329,9 +335,10 @@ export class PinballWorld extends Simulation {
         else program_state.set_camera(this.initial_camera_location);
         super.display(context,program_state);
 
-        if (this.ball_focus && this.camera_focus!=null) program_state.set_camera(Mat4.inverse(this.camera_focus.drawn_location.times(Mat4.translation(0,0,5))));
+        if (this.ball_focus && this.camera_focus!=null) program_state.set_camera(Mat4.inverse(this.camera_focus.drawn_location.times(Mat4.translation(0,0,20))));
         else program_state.set_camera(this.initial_camera_location);
         super.display(context,program_state);
+
 
 
 
