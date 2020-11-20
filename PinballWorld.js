@@ -25,7 +25,7 @@ class Pinball extends Body
         this.launched=false;
 
         // this.trapped
-        let model_transform=Mat4.identity().times(Mat4.translation(31,4,3))
+        let model_transform=Mat4.identity().times(Mat4.translation(31,4,2.6)).times(Mat4.scale(.6,.6,.6))
         //collision_adjust();
         this.emplace(model_transform,vec3(0,0,0),0)
 
@@ -48,11 +48,11 @@ class Pinball extends Body
        //     this.world.camera_focus=null;
         return;
         }
-        if (this.center[1]>45)
+        if (this.center[1]>45.4)
         {
             this.linear_velocity[1]*=-1;
         }
-        if (this.center[0]< 3|| this.center[0]> 31)
+        if (this.center[0]< 2.6|| this.center[0]> 31.4)
         {
             this.linear_velocity[0]*=-1;
         }
@@ -129,11 +129,11 @@ export class PinballWorld extends Simulation {
             //Smooth planet where triangles are subdivided 4 times (used in planets 3 and 4)
             cube: new defs.Cube(),
             circle: new defs.Regular_2D_Polygon(1, 15),
-            //cylinder: new defs.Capped_Cylinder(1,1)
+            cylinder: new defs.Capped_Cylinder(10,10,[0,150])
         
 
         };
-       this.time_scale/=20;
+       this.time_scale/=370;
         // *** Materials
         this.materials = {
             pinball: new Material(new defs.Phong_Shader(),
@@ -174,12 +174,13 @@ export class PinballWorld extends Simulation {
 
         var i;
         var j;
-        for (i=5;i<40;i+=5)
+        for (i=5;i<40;i+=2)
         {
-            for (j=5;j<30;j+=5)
+            for (j=5;j<25;j+=2)
             {
-                let obj_transform=Mat4.identity().times(Mat4.translation(j,i,3));
-                this.bodies.push(new Obstacle(obj_transform,0,this.shapes.cube, this.materials.pinball))
+                if (i%4==j%4) continue;
+                let obj_transform=Mat4.identity().times(Mat4.translation(j,i,4)).times(Mat4.scale(.2,.2,3));
+                this.bodies.push(new Obstacle(obj_transform,0,this.shapes.cylinder, this.materials.pinball))
             }
         }
 
@@ -253,7 +254,7 @@ const machine_color= color(.5,0,.5,1);
         let below_transform=model_transform.times(Mat4.translation(16,24,1)).times(Mat4.scale(16,24,1))
         this.shapes.cube.draw(context, program_state, below_transform, this.materials.pinball.override({color: machine_color}));
 
-        if (this.ball_focus && this.camera_focus!=null) program_state.set_camera(Mat4.inverse(this.camera_focus.drawn_location.times(Mat4.translation(0,0,5))));
+        if (this.ball_focus && this.camera_focus!=null) program_state.set_camera(Mat4.inverse(this.camera_focus.drawn_location.times(Mat4.translation(0,0,20))));
        else program_state.set_camera(this.initial_camera_location);
        super.display(context,program_state);
 
