@@ -1,13 +1,7 @@
-0
-//Landon Miller
-//UID 804543216
-//CS 174A
-//assignment3.js
-
 import {defs, tiny} from './examples/common.js';
 import {Body,Simulation} from "./examples/collisions-demo.js"
 const {
-    Vector, Vector3, vec, vec3, vec4, color, hex_color, Shader, Matrix, Mat4, Light, Shape, Material, Scene,
+    Vector, Vector3, vec, vec3, vec4, color, hex_color, Shader, Matrix, Mat4, Light, Shape, Material, Scene, Texture
 } = tiny;
 
 
@@ -17,9 +11,9 @@ class Pinball extends Body
     {
         super(world.shapes.sphere,world.materials.pinball,vec3(1,1,1))
 
-   
-       
-       
+
+
+
         this.alive=true;
         this.world=world;
         this.launched=false;
@@ -33,19 +27,20 @@ class Pinball extends Body
 
     doSomething(dt)
     {
-        if (!this.launched && this.world.launch_ball) 
+        if (!this.launched && this.world.launch_ball)
         {
             this.get_launched(this.world.launch_speed);
         }
         this.apply_gravity(dt);
         //collision_adjust();
-        
-        
+
+
         let detected_body= this.world.collide_check(this);
-        if (detected_body!=null) 
+        if (detected_body!=null)
         {
-        this.collide(detected_body);
-        
+            // if (this.world.camera_focus==this)
+            //     this.world.camera_focus=null;
+            this.collide(detected_body);
         }
         if (this.center[1]>45.4)
         {
@@ -59,11 +54,11 @@ class Pinball extends Body
         {
             this.alive=false;
             if (this.world.camera_focus==this)
-            this.world.camera_focus=null;
+                this.world.camera_focus=null;
             return;
         }
-        
-       
+
+
 
 
 
@@ -71,61 +66,59 @@ class Pinball extends Body
 
 
     }
-
-    distance(a){ // distance to actor a  
+    distance(a){ // distance to actor a
         var d = (this.center[0] - a.center[0]) * (this.center[0] - a.center[0]) + (this.center[1] - a.center[1]) * (this.center[1] - a.center[1]);
         var e = Math.sqrt(d);
         return e;
     }
-    
+
     collide(a){  // need to check for self collision
         var d = this.distance(a);
         var theta_travel = 0;
 //        if ( (this.r + a.r ) >= d) {
-        
-            // find velocity
-            var v = Math.sqrt(this.linear_velocity[0] * this.linear_velocity[0] + this.linear_velocity[1] *this.linear_velocity[1]);
 
-            // find direction of travel as angle
+        // find velocity
+        var v = Math.sqrt(this.linear_velocity[0] * this.linear_velocity[0] + this.linear_velocity[1] *this.linear_velocity[1]);
 
-            
-               
-                // probably better calculated earlier when v set
-                // theck for vx=0;
-            
-             if(this.linear_velocity[0] === 0) {
-                if(this.linear_velocity[1] > 0) theta_travel = 3.14159/2;
-                else theta_travel = -3.14159/2;
-            }
-            else {
-                  theta_travel = Math.atan(this.linear_velocity[1]/this.linear_velocity[0]);   
-                // probably better calculated earlier when v set
-                // theck for vx=0;
-            }
-            var dy = a.center[1] - this.center[1];
-            var dx = a.center[0] - this.center[0];
-            var theta_position=0;
-                if(dx == 0) {   // vertical
-                if(dy > 0) theta_position = 3.14159/2;
-                else  theta_position = -3.14159/2;
-            }
-            else {
-                var theta_position = Math.atan(dy/dx);
-            }
+        // find direction of travel as angle
 
-            
 
-            let df=.8;
 
-            var theta_bounce = 2 * theta_travel - theta_position;  // does not seem right
-            this.linear_velocity[1] = v * Math.sin(theta_bounce);
-            this.linear_velocity[0] = v * Math.cos(theta_bounce);
+        // probably better calculated earlier when v set
+        // theck for vx=0;
 
-            
+        if(this.linear_velocity[0] === 0) {
+            if(this.linear_velocity[1] > 0) theta_travel = 3.14159/2;
+            else theta_travel = -3.14159/2;
+        }
+        else {
+            theta_travel = Math.atan(this.linear_velocity[1]/this.linear_velocity[0]);
+            // probably better calculated earlier when v set
+            // theck for vx=0;
+        }
+        var dy = a.center[1] - this.center[1];
+        var dx = a.center[0] - this.center[0];
+        var theta_position=0;
+        if(dx == 0) {   // vertical
+            if(dy > 0) theta_position = 3.14159/2;
+            else  theta_position = -3.14159/2;
+        }
+        else {
+            var theta_position = Math.atan(dy/dx);
+        }
 
-      
+
+
+        let df=.8;
+
+        var theta_bounce = 2 * theta_travel - theta_position;  // does not seem right
+        this.linear_velocity[1] = v * Math.sin(theta_bounce);
+        this.linear_velocity[0] = v * Math.cos(theta_bounce);
+
+
+
+
     }
-
 
     get_launched(speed)
     {
@@ -144,9 +137,9 @@ class Pinball extends Body
         let gravity=6;
         if (this.launched)
         {
-        this.linear_velocity[1]-=gravity*dt;
+            this.linear_velocity[1]-=gravity*dt;
         }
-        
+
     }
 
     //  check_for_death(){}
@@ -159,15 +152,15 @@ class Obstacle extends Body{
         super(shape,material,vec3(1,1,1))
         this.springiness=springiness;
         this.emplace(model_transform,vec3(0,0,0),0)
-        
-    
+
+
     }
 
     doSomething(dt)
     {
-        
+
     }
-  }
+}
 
 
 export class PinballWorld extends Simulation {
@@ -184,14 +177,31 @@ export class PinballWorld extends Simulation {
             cube: new defs.Cube(),
             circle: new defs.Regular_2D_Polygon(1, 15),
             cylinder: new defs.Capped_Cylinder(10,10,[0,150])
-        
+
 
         };
-       this.time_scale/=370;
+
+        this.time_scale/=800;
+
+        
+
+
+        //texture stuff
+        this.texture = new Texture("data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7");
+
+
+        const bump = new defs.Fake_Bump_Map(1);
+
         // *** Materials
         this.materials = {
-            pinball: new Material(new defs.Phong_Shader(),
-                {ambient: .4, diffusivity: 1, specularity:1, color: hex_color("#ffffff")}),
+            pinball: new Material(bump, (new defs.Phong_Shader(),
+                {ambient: 0.5, diffusivity: 0.5, specularity: 0.5, texture: new Texture("assets/pinball_metal.png")})),
+            wall: new Material(bump, (new defs.Phong_Shader(),
+                {ambient: 1, diffusivity: 0.5, specularity: 0.5, texture: new Texture("assets/wood.jpg")})),
+            nail: new Material(new defs.Phong_Shader(),
+                {ambient: 1, diffusivity: 0.5, specularity: 0.5, color: hex_color("#ffffff")}),
+            floor: new Material(bump, (new defs.Phong_Shader(),
+                {ambient: 0.5, diffusivity: 0.5, specularity: 0.5, color: hex_color("#f74032")})),
 
         }
 
@@ -200,30 +210,31 @@ export class PinballWorld extends Simulation {
         this.launch_speed=0;
         this.ball_in_launcher=false;
         this.launch_ball=false;
-        
-        
-       
+
+
+
+
         this.initial_camera_location = Mat4.look_at(vec3(15, 20, 90), vec3(15, 20, 0), vec3(0, 1, 1));
 
-         let model_transform = Mat4.identity();
+        let model_transform = Mat4.identity();
 
         const machine_color= color(.5,0,.5,1);
 
-         //program_state.lights = [new Light(sun_light_position, color(1,1,1,1), 10**3)];
-        
-       
-        
+        //program_state.lights = [new Light(sun_light_position, color(1,1,1,1), 10**3)];
+
+
+
 
         let left_transform=model_transform.times(Mat4.translation(1,24,4)).times(Mat4.scale(1,24,4));
         let right_transform=model_transform.times(Mat4.translation(33,24,4)).times(Mat4.scale(1,24,4));
         let bottom_transform=model_transform.times(Mat4.translation(17,1,4)).times(Mat4.scale(16,1,4));
         let top_transform=model_transform.times(Mat4.translation(17,47,4)).times(Mat4.scale(16,1,4));
 
-       
-        this.bodies=[new Obstacle(left_transform,0,this.shapes.cube, this.materials.pinball.override({color: machine_color})),
-        new Obstacle(right_transform,0,this.shapes.cube, this.materials.pinball.override({color: machine_color})),
-        new Obstacle(bottom_transform,0,this.shapes.cube, this.materials.pinball.override({color: machine_color})),
-        new Obstacle(top_transform,0,this.shapes.cube, this.materials.pinball.override({color: machine_color}))
+
+        this.bodies=[new Obstacle(left_transform,0,this.shapes.cube, this.materials.wall),
+            new Obstacle(right_transform,0,this.shapes.cube, this.materials.wall),
+            new Obstacle(bottom_transform,0,this.shapes.cube, this.materials.wall),
+            new Obstacle(top_transform,0,this.shapes.cube, this.materials.wall)
         ]
 
         var i;
@@ -232,9 +243,11 @@ export class PinballWorld extends Simulation {
         {
             for (j=5;j<25;j+=2)
             {
+
                 if (i%4==j%4) continue;
                 let obj_transform=Mat4.identity().times(Mat4.translation(j,i,4)).times(Mat4.scale(.2,.2,3));
                 this.bodies.push(new Obstacle(obj_transform,0,this.shapes.cylinder, this.materials.pinball))
+
             }
         }
 
@@ -243,23 +256,23 @@ export class PinballWorld extends Simulation {
 
 
 
-    
+
     collide_check(ball)
     {
         if (ball.launched==false) return null;
         var i;
-       
-         for  (i=0; i<this.bodies.length;i++)
+
+        for  (i=0; i<this.bodies.length;i++)
         {
             ball.inverse=Mat4.inverse(ball.drawn_location)
             if(this.bodies[i].center[1]!=4&&ball.check_if_colliding(this.bodies[i], {intersect_test: Body.intersect_sphere, points: new defs.Subdivision_Sphere(1), leeway: .1}))
-            return this.bodies[i];
-          
+                return this.bodies[i];
+
 
         }
         return null;
     }
-    
+
 
     start_game()
     {
@@ -282,7 +295,7 @@ export class PinballWorld extends Simulation {
 
 
 
-    
+
 
     display(context,program_state) {
 
@@ -297,57 +310,66 @@ export class PinballWorld extends Simulation {
         program_state.projection_transform = Mat4.perspective(
             Math.PI / 4, context.width / context.height, .1, 1000);
 
-      
-        
+
+
+
+
+
         const sun_light_position = vec4(0,0,0,1);
 
-const machine_color= color(.5,0,.5,1);
+        const machine_color= color(.5,0,.5,1);
         program_state.lights = [new Light(sun_light_position, color(1,1,1,1), 10**3)];
         //const t = program_state.animation_time / 1000, dt = program_state.animation_delta_time / 1000;
         let model_transform=Mat4.identity();
         let below_transform=model_transform.times(Mat4.translation(16,24,1)).times(Mat4.scale(16,24,1))
-        this.shapes.cube.draw(context, program_state, below_transform, this.materials.pinball.override({color: machine_color}));
+        this.shapes.cube.draw(context, program_state, below_transform, this.materials.floor);
+
 
         if (this.ball_focus && this.camera_focus!=null) program_state.set_camera(Mat4.inverse(this.camera_focus.drawn_location.times(Mat4.translation(0,0,20))));
-       else program_state.set_camera(this.initial_camera_location);
-       super.display(context,program_state);
+        else program_state.set_camera(this.initial_camera_location);
+        super.display(context,program_state);
 
-       
-        
+        if (this.ball_focus && this.camera_focus!=null) program_state.set_camera(Mat4.inverse(this.camera_focus.drawn_location.times(Mat4.translation(0,0,5))));
+        else program_state.set_camera(this.initial_camera_location);
+        super.display(context,program_state);
+
+
+
+
     }
     update_state(dt)
     {
-        
-     
+
+
 
         var i;
         for  (i=0; i<this.bodies.length;i++)
         {
-         
+
             // if (PinballArray[i]!=null)
             this.bodies[i].doSomething(dt);
             // if (PinballArray[i].isAlive()==false)
             // PinballArray[i]=null;
 
         }
-      
-        if (this.game_started&&this.ball_in_launcher==false&&this.balls_remaining!=0) 
+
+        if (this.game_started&&this.ball_in_launcher==false&&this.balls_remaining!=0)
         {
-            
-        this.bodies.push(new Pinball(this,this.shapes.sphere,this.materials.pinball));
-        this.ball_in_launcher=true;
+
+            this.bodies.push(new Pinball(this,this.shapes.sphere,this.materials.pinball));
+            this.ball_in_launcher=true;
 
         }
         for  (i=0; i<this.bodies.length;i++)
         {
             if (this.bodies[i].alive==false)
-            // if (PinballArray[i]!=null)
-            this.bodies.splice(i,1);
+                // if (PinballArray[i]!=null)
+                this.bodies.splice(i,1);
             // if (PinballArray[i].isAlive()==false)
             // PinballArray[i]=null;
 
         }
-        
+
         //We set the light at the o
 
     }
