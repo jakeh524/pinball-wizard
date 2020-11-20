@@ -44,9 +44,8 @@ class Pinball extends Body
         let detected_body= this.world.collide_check(this);
         if (detected_body!=null) 
         {
-       // if (this.world.camera_focus==this)
-       //     this.world.camera_focus=null;
-        return;
+        this.collide(detected_body);
+        
         }
         if (this.center[1]>45.4)
         {
@@ -72,10 +71,65 @@ class Pinball extends Body
 
 
     }
-  
+
+    distance(a){ // distance to actor a  
+        var d = (this.center[0] - a.center[0]) * (this.center[0] - a.center[0]) + (this.center[1] - a.center[1]) * (this.center[1] - a.center[1]);
+        var e = Math.sqrt(d);
+        return e;
+    }
+    
+    collide(a){  // need to check for self collision
+        var d = this.distance(a);
+        var theta_travel = 0;
+//        if ( (this.r + a.r ) >= d) {
+        
+            // find velocity
+            var v = Math.sqrt(this.linear_velocity[0] * this.linear_velocity[0] + this.linear_velocity[1] *this.linear_velocity[1]);
+
+            // find direction of travel as angle
+
+            
+               
+                // probably better calculated earlier when v set
+                // theck for vx=0;
+            
+             if(this.linear_velocity[0] === 0) {
+                if(this.linear_velocity[1] > 0) theta_travel = 3.14159/2;
+                else theta_travel = -3.14159/2;
+            }
+            else {
+                  theta_travel = Math.atan(this.linear_velocity[1]/this.linear_velocity[0]);   
+                // probably better calculated earlier when v set
+                // theck for vx=0;
+            }
+            var dy = a.center[1] - this.center[1];
+            var dx = a.center[0] - this.center[0];
+            var theta_position=0;
+                if(dx == 0) {   // vertical
+                if(dy > 0) theta_position = 3.14159/2;
+                else  theta_position = -3.14159/2;
+            }
+            else {
+                var theta_position = Math.atan(dy/dx);
+            }
+
+            
+
+            let df=.8;
+
+            var theta_bounce = 2 * theta_travel - theta_position;  // does not seem right
+            this.linear_velocity[1] = v * Math.sin(theta_bounce);
+            this.linear_velocity[0] = v * Math.cos(theta_bounce);
+
+            
+
+      
+    }
+
+
     get_launched(speed)
     {
-        this.linear_velocity=vec3(-1*speed,3*speed,0)
+        this.linear_velocity=vec3(-.7*speed,3*speed,0)
         this.launched=true;
         this.world.launch_ball=false;
         this.world.ball_in_launcher=false;
@@ -174,7 +228,7 @@ export class PinballWorld extends Simulation {
 
         var i;
         var j;
-        for (i=5;i<40;i+=2)
+        for (i=5;i<27;i+=2)
         {
             for (j=5;j<25;j+=2)
             {
