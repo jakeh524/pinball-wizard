@@ -17,7 +17,7 @@ class Pinball extends Body
     {
         super(world.shapes.sphere,world.materials.pinball,vec3(1,1,1))
 
-        
+   
        
        
         this.alive=true;
@@ -33,7 +33,10 @@ class Pinball extends Body
 
     doSomething(dt)
     {
-        if (!this.launched && this.world.launch_ball) this.get_launched(this.world.launch_speed);
+        if (!this.launched && this.world.launch_ball) 
+        {
+            this.get_launched(this.world.launch_speed);
+        }
         this.apply_gravity(dt);
         //collision_adjust();
         
@@ -41,13 +44,23 @@ class Pinball extends Body
         let detected_body= this.world.collide_check(this);
         if (detected_body!=null) 
         {
-        this.alive=false;
+       // if (this.world.camera_focus==this)
+       //     this.world.camera_focus=null;
         return;
         }
-       
+        if (this.center[1]>45)
+        {
+            this.linear_velocity[1]*=-1;
+        }
+        if (this.center[0]< 3|| this.center[0]> 31)
+        {
+            this.linear_velocity[0]*=-1;
+        }
         if (this.center[1]<3.9)
         {
             this.alive=false;
+            if (this.world.camera_focus==this)
+            this.world.camera_focus=null;
             return;
         }
         
@@ -66,6 +79,8 @@ class Pinball extends Body
         this.launched=true;
         this.world.launch_ball=false;
         this.world.ball_in_launcher=false;
+        this.world.balls_remaining-=1;
+        this.world.camera_focus=this;
     }
 
 
@@ -90,6 +105,7 @@ class Obstacle extends Body{
         super(shape,material,vec3(1,1,1))
         this.springiness=springiness;
         this.emplace(model_transform,vec3(0,0,0),0)
+        
     
     }
 
@@ -104,7 +120,8 @@ export class PinballWorld extends Simulation {
     constructor() {
         // constructor(): Scenes begin by populating initial values like the Shapes and Materials they'll need.
         super();
-
+        this.ball_focus=false;
+        this.camera_focus=null;
         // At the beginning of our program, load one of each of these shape definitions onto the GPU.
         this.shapes = {
 
@@ -112,11 +129,11 @@ export class PinballWorld extends Simulation {
             //Smooth planet where triangles are subdivided 4 times (used in planets 3 and 4)
             cube: new defs.Cube(),
             circle: new defs.Regular_2D_Polygon(1, 15),
-
-
+            //cylinder: new defs.Capped_Cylinder(1,1)
+        
 
         };
-
+       this.time_scale/=20;
         // *** Materials
         this.materials = {
             pinball: new Material(new defs.Phong_Shader(),
@@ -131,8 +148,8 @@ export class PinballWorld extends Simulation {
         this.launch_ball=false;
         
         
-        
-        this.initial_camera_location = Mat4.look_at(vec3(0, 10, 20), vec3(0, 0, 0), vec3(0, 1, 0));
+       
+        this.initial_camera_location = Mat4.look_at(vec3(15, 20, 90), vec3(15, 20, 0), vec3(0, 1, 1));
 
          let model_transform = Mat4.identity();
 
@@ -180,7 +197,7 @@ export class PinballWorld extends Simulation {
          for  (i=0; i<this.bodies.length;i++)
         {
             ball.inverse=Mat4.inverse(ball.drawn_location)
-            if(this.bodies[i].center[1]!=4&&ball.check_if_colliding(this.bodies[i], {intersect_test: Body.intersect_sphere, points: new defs.Subdivision_Sphere(1), leeway: .5}))
+            if(this.bodies[i].center[1]!=4&&ball.check_if_colliding(this.bodies[i], {intersect_test: Body.intersect_sphere, points: new defs.Subdivision_Sphere(1), leeway: .1}))
             return this.bodies[i];
           
 
@@ -189,16 +206,21 @@ export class PinballWorld extends Simulation {
     }
     
 
-
+    start_game()
+    {
+        if (this.game_started) return;
+        this.game_started=true;
+        this.balls_remaining=5;
+    }
     make_control_panel(context,program_state) {
         // Draw the scene's buttons, setup their actions and keyboard shortcuts, and monitor live measurements.
-        this.key_triggered_button("Start Game", ["Control", "0"], () => this.game_started=true)
+        this.key_triggered_button("Start Game", ["Control", "0"], () => this.start_game())
         this.new_line();
         this.key_triggered_button("Pull spring back more", ["Control", "1"], () => this.launch_speed=Math.min(10,this.launch_speed+1));
         this.key_triggered_button("Pull spring back less", ["Control", "2"], () => this.launch_speed=Math.max(0,this.launch_speed-1));
         this.new_line();
         this.key_triggered_button("Launch Pinball", ["Control", "3"], () => {if (this.ball_in_launcher) this.launch_ball=true; });
-        //this.key_triggered_button("Attach to planet 4", ["Control", "4"], () => this.attached = () => this.planet_4);
+        this.key_triggered_button("Switch camera", ["Control", "4"], () => this.ball_focus=!this.ball_focus);
         //this.new_line();
 
     }
@@ -230,36 +252,13 @@ const machine_color= color(.5,0,.5,1);
         let model_transform=Mat4.identity();
         let below_transform=model_transform.times(Mat4.translation(16,24,1)).times(Mat4.scale(16,24,1))
         this.shapes.cube.draw(context, program_state, below_transform, this.materials.pinball.override({color: machine_color}));
+
+        if (this.ball_focus && this.camera_focus!=null) program_state.set_camera(Mat4.inverse(this.camera_focus.drawn_location.times(Mat4.translation(0,0,5))));
+       else program_state.set_camera(this.initial_camera_location);
        super.display(context,program_state);
 
-        
-
        
-
-
-
-
-
-        /*
-        if (this.attached && this.attached()!=this.initial_camera_location)
-        {
-            const desired= this.attached().times(Mat4.translation(0,0,5));
-            //We take basis for planet we want to attach to and move 5 units in the positive direction on z-axis (equivalent to moving camera
-            //back 5 units
-            const blending_factor=.1; //How much we want to blend the desired matrix into our current one. Lower means the camera moves slower.
-            const mixed=desired.map( (x,i) => Vector.from( program_state.camera_transform[i] ).mix( x, blending_factor ) )
-            program_state.set_camera(Mat4.inverse(mixed))
-            //Must pass in inverse to set camera function
-        }
-       else if (this.attached && this.attached()==this.initial_camera_location)
-       {
-            let desired=Mat4.inverse(this.attached()) //initial_camera_location is actually the inverse of the initial camera location
-            //(blending the inverse would be useless)
-            const blending_factor=.1;
-            const mixed=desired.map( (x,i) => Vector.from( program_state.camera_transform[i] ).mix( x, blending_factor ) )
-            program_state.set_camera(Mat4.inverse(mixed))
-       }
-        */
+        
     }
     update_state(dt)
     {
@@ -277,7 +276,7 @@ const machine_color= color(.5,0,.5,1);
 
         }
       
-        if (this.game_started&&this.ball_in_launcher==false) 
+        if (this.game_started&&this.ball_in_launcher==false&&this.balls_remaining!=0) 
         {
             
         this.bodies.push(new Pinball(this,this.shapes.sphere,this.materials.pinball));
