@@ -1,13 +1,7 @@
-0
-//Landon Miller
-//UID 804543216
-//CS 174A
-//assignment3.js
-
 import {defs, tiny} from './examples/common.js';
 import {Body,Simulation} from "./examples/collisions-demo.js"
 const {
-    Vector, Vector3, vec, vec3, vec4, color, hex_color, Shader, Matrix, Mat4, Light, Shape, Material, Scene,
+    Vector, Vector3, vec, vec3, vec4, color, hex_color, Shader, Matrix, Mat4, Light, Shape, Material, Scene, Texture
 } = tiny;
 
 
@@ -133,11 +127,28 @@ export class PinballWorld extends Simulation {
         
 
         };
+
        this.time_scale/=370;
+
+       this.time_scale/=20;
+
+
+        //texture stuff
+        this.texture = new Texture("data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7");
+
+
+        const bump = new defs.Fake_Bump_Map(1);
+
         // *** Materials
         this.materials = {
-            pinball: new Material(new defs.Phong_Shader(),
-                {ambient: .4, diffusivity: 1, specularity:1, color: hex_color("#ffffff")}),
+            pinball: new Material(bump, (new defs.Phong_Shader(),
+                {ambient: 0.5, diffusivity: 0.5, specularity: 0.5, texture: new Texture("assets/pinball_metal.png")})),
+            wall: new Material(bump, (new defs.Phong_Shader(),
+                {ambient: 1, diffusivity: 0.5, specularity: 0.5, texture: new Texture("assets/wood.jpg")})), 
+            nail: new Material(new defs.Phong_Shader(),
+                {ambient: 1, diffusivity: 0.5, specularity: 0.5, color: hex_color("#ffffff")}),
+            floor: new Material(bump, (new defs.Phong_Shader(),
+                {ambient: 0.5, diffusivity: 0.5, specularity: 0.5, color: hex_color("#f74032")})),
 
         }
 
@@ -146,12 +157,13 @@ export class PinballWorld extends Simulation {
         this.launch_speed=0;
         this.ball_in_launcher=false;
         this.launch_ball=false;
-        
+
+
         
        
         this.initial_camera_location = Mat4.look_at(vec3(15, 20, 90), vec3(15, 20, 0), vec3(0, 1, 1));
 
-         let model_transform = Mat4.identity();
+        let model_transform = Mat4.identity();
 
         const machine_color= color(.5,0,.5,1);
 
@@ -166,10 +178,10 @@ export class PinballWorld extends Simulation {
         let top_transform=model_transform.times(Mat4.translation(17,47,4)).times(Mat4.scale(16,1,4));
 
        
-        this.bodies=[new Obstacle(left_transform,0,this.shapes.cube, this.materials.pinball.override({color: machine_color})),
-        new Obstacle(right_transform,0,this.shapes.cube, this.materials.pinball.override({color: machine_color})),
-        new Obstacle(bottom_transform,0,this.shapes.cube, this.materials.pinball.override({color: machine_color})),
-        new Obstacle(top_transform,0,this.shapes.cube, this.materials.pinball.override({color: machine_color}))
+        this.bodies=[new Obstacle(left_transform,0,this.shapes.cube, this.materials.wall),
+        new Obstacle(right_transform,0,this.shapes.cube, this.materials.wall),
+        new Obstacle(bottom_transform,0,this.shapes.cube, this.materials.wall),
+        new Obstacle(top_transform,0,this.shapes.cube, this.materials.wall)
         ]
 
         var i;
@@ -178,9 +190,11 @@ export class PinballWorld extends Simulation {
         {
             for (j=5;j<25;j+=2)
             {
+
                 if (i%4==j%4) continue;
                 let obj_transform=Mat4.identity().times(Mat4.translation(j,i,4)).times(Mat4.scale(.2,.2,3));
                 this.bodies.push(new Obstacle(obj_transform,0,this.shapes.cylinder, this.materials.pinball))
+
             }
         }
 
@@ -243,20 +257,29 @@ export class PinballWorld extends Simulation {
         program_state.projection_transform = Mat4.perspective(
             Math.PI / 4, context.width / context.height, .1, 1000);
 
-      
+
+
+
+
         
         const sun_light_position = vec4(0,0,0,1);
 
-const machine_color= color(.5,0,.5,1);
+        const machine_color= color(.5,0,.5,1);
         program_state.lights = [new Light(sun_light_position, color(1,1,1,1), 10**3)];
         //const t = program_state.animation_time / 1000, dt = program_state.animation_delta_time / 1000;
         let model_transform=Mat4.identity();
         let below_transform=model_transform.times(Mat4.translation(16,24,1)).times(Mat4.scale(16,24,1))
-        this.shapes.cube.draw(context, program_state, below_transform, this.materials.pinball.override({color: machine_color}));
+        this.shapes.cube.draw(context, program_state, below_transform, this.materials.floor);
+
 
         if (this.ball_focus && this.camera_focus!=null) program_state.set_camera(Mat4.inverse(this.camera_focus.drawn_location.times(Mat4.translation(0,0,20))));
        else program_state.set_camera(this.initial_camera_location);
        super.display(context,program_state);
+
+        if (this.ball_focus && this.camera_focus!=null) program_state.set_camera(Mat4.inverse(this.camera_focus.drawn_location.times(Mat4.translation(0,0,5))));
+        else program_state.set_camera(this.initial_camera_location);
+        super.display(context,program_state);
+
 
        
         
