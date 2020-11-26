@@ -224,7 +224,7 @@ export class PinballWorld extends Simulation {
 
 
 
-        this.initial_camera_location = Mat4.look_at(vec3(15, 20, 90), vec3(15, 20, 0), vec3(0, 1, 1));
+        this.initial_camera_location = Mat4.look_at(vec3(15, 25, 90), vec3(15, 25, 0), vec3(0, 1, 1));
 
         let model_transform = Mat4.identity();
 
