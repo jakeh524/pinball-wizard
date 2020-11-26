@@ -1,8 +1,14 @@
 import {defs, tiny} from './examples/common.js';
-import {Body,Simulation} from "./examples/collisions-demo.js"
+import {Body, Simulation} from "./examples/collisions-demo.js";
+import {Shape_From_File} from "./examples/obj-file-demo.js";
+import {Text_Line} from "./examples/text-demo.js";
 const {
     Vector, Vector3, vec, vec3, vec4, color, hex_color, Shader, Matrix, Mat4, Light, Shape, Material, Scene, Texture
 } = tiny;
+
+const {Cube, Textured_Phong} = defs
+
+let score = 0;
 
 
 class Pinball extends Body
@@ -10,7 +16,6 @@ class Pinball extends Body
     constructor(world,shape,material)
     {
         super(world.shapes.sphere,world.materials.pinball,vec3(1,1,1))
-
 
 
 
@@ -35,12 +40,15 @@ class Pinball extends Body
         //collision_adjust();
 
 
-        let detected_body= this.world.collide_check(this);
+        let detected_body = this.world.collide_check(this);
         if (detected_body!=null)
         {
             // if (this.world.camera_focus==this)
             //     this.world.camera_focus=null;
             this.collide(detected_body);
+            
+
+
         }
         if (this.center[1]>45.4)
         {
@@ -60,12 +68,8 @@ class Pinball extends Body
 
 
 
-
-
-
-
-
     }
+
     distance(a){ // distance to actor a
         var d = (this.center[0] - a.center[0]) * (this.center[0] - a.center[0]) + (this.center[1] - a.center[1]) * (this.center[1] - a.center[1]);
         var e = Math.sqrt(d);
@@ -87,7 +91,7 @@ class Pinball extends Body
         // probably better calculated earlier when v set
         // theck for vx=0;
 
-        if(this.linear_velocity[0] === 0) {
+        if(this.linear_velocity[0] == 0) {
             if(this.linear_velocity[1] > 0) theta_travel = 3.14159/2;
             else theta_travel = -3.14159/2;
         }
@@ -108,17 +112,17 @@ class Pinball extends Body
         }
 
 
-
-        let df=.8;
+        let df=.9;
 
         var theta_bounce = 2 * theta_travel - theta_position;  // does not seem right
         this.linear_velocity[1] = v * Math.sin(theta_bounce);
         this.linear_velocity[0] = v * Math.cos(theta_bounce);
 
-
-
-
+        
+        score += 10;
+        //console.log(score);
     }
+
 
     get_launched(speed)
     {
@@ -169,53 +173,54 @@ export class PinballWorld extends Simulation {
         super();
         this.ball_focus=false;
         this.camera_focus=null;
+        
         // At the beginning of our program, load one of each of these shape definitions onto the GPU.
         this.shapes = {
 
             sphere: new defs.Subdivision_Sphere(4),
-            //Smooth planet where triangles are subdivided 4 times (used in planets 3 and 4)
             cube: new defs.Cube(),
             circle: new defs.Regular_2D_Polygon(1, 15),
-            cylinder: new defs.Capped_Cylinder(10,10,[0,150])
-
+            cylinder: new defs.Capped_Cylinder(10,10,[0,150]),
+            text: new Text_Line(10),
 
         };
 
 
         this.time_scale/=800;
 
-        
-
-
-
 
         //texture stuff
-        this.texture = new Texture("data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7");
-
 
         const bump = new defs.Fake_Bump_Map(1);
+        const texture = new defs.Textured_Phong(1);
 
         // *** Materials
         this.materials = {
             pinball: new Material(bump, (new defs.Phong_Shader(),
                 {ambient: 0.5, diffusivity: 0.5, specularity: 0.5, texture: new Texture("assets/pinball_metal.png")})),
             wall: new Material(bump, (new defs.Phong_Shader(),
-
                 {ambient: 1, diffusivity: 0.5, specularity: 0.5, texture: new Texture("assets/wood.jpg")})),
-
 
             nail: new Material(new defs.Phong_Shader(),
                 {ambient: 1, diffusivity: 0.5, specularity: 0.5, color: hex_color("#ffffff")}),
-            floor: new Material(bump, (new defs.Phong_Shader(),
-                {ambient: 0.5, diffusivity: 0.5, specularity: 0.5, color: hex_color("#f74032")})),
+            floor: new Material(new defs.Phong_Shader(),
+                {ambient: 0.5, diffusivity: 0.5, specularity: 0.5, color: hex_color("#f74032")}),
 
         }
+
+        // To show text you need a Material like this one:
+        this.text_image = new Material(texture, {
+            ambient: 1, diffusivity: 0, specularity: 0,
+            texture: new Texture("assets/text.png")
+        });
+       
 
         this.balls_remaining=0;
         this.game_started=false;
         this.launch_speed=0;
         this.ball_in_launcher=false;
         this.launch_ball=false;
+        this.score = 0;
 
 
 
@@ -317,7 +322,7 @@ export class PinballWorld extends Simulation {
             Math.PI / 4, context.width / context.height, .1, 1000);
 
 
-
+       
 
 
 
@@ -327,6 +332,8 @@ export class PinballWorld extends Simulation {
         program_state.lights = [new Light(sun_light_position, color(1,1,1,1), 10**3)];
         //const t = program_state.animation_time / 1000, dt = program_state.animation_delta_time / 1000;
         let model_transform=Mat4.identity();
+
+
         let below_transform=model_transform.times(Mat4.translation(16,24,1)).times(Mat4.scale(16,24,1))
         this.shapes.cube.draw(context, program_state, below_transform, this.materials.floor);
 
@@ -338,6 +345,11 @@ export class PinballWorld extends Simulation {
         if (this.ball_focus && this.camera_focus!=null) program_state.set_camera(Mat4.inverse(this.camera_focus.drawn_location.times(Mat4.translation(0,0,20))));
         else program_state.set_camera(this.initial_camera_location);
         super.display(context,program_state);
+
+        let score_string = score.toString();
+        let score_transform = model_transform.times(Mat4.translation(16, 55, 4)).times(Mat4.scale(2, 2, 2));
+        this.shapes.text.set_string(score_string, context.context);
+        this.shapes.text.draw(context, program_state, score_transform, this.text_image);
 
 
 
