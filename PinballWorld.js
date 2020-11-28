@@ -18,7 +18,6 @@ class Pinball extends Body
         super(world.shapes.sphere,world.materials.pinball,vec3(1,1,1))
 
 
-
         this.alive=true;
         this.world=world;
         this.launched=false;
@@ -118,7 +117,7 @@ class Pinball extends Body
         this.linear_velocity[1] = v * Math.sin(theta_bounce);
         this.linear_velocity[0] = v * Math.cos(theta_bounce);
 
-        
+
         score += 10;
         //console.log(score);
     }
@@ -182,6 +181,7 @@ export class PinballWorld extends Simulation {
             circle: new defs.Regular_2D_Polygon(1, 15),
             cylinder: new defs.Capped_Cylinder(10,10,[0,150]),
             text: new Text_Line(10),
+            machine_table: new Shape_From_File("assets/teapot.obj"),
 
         };
 
@@ -213,6 +213,12 @@ export class PinballWorld extends Simulation {
             ambient: 1, diffusivity: 0, specularity: 0,
             texture: new Texture("assets/text.png")
         });
+
+        //test texture for obj
+        this.stars = new Material(new defs.Textured_Phong(1), {
+            color: color(.5, .5, .5, 1),
+            ambient: .3, diffusivity: .5, specularity: .5, texture: new Texture("assets/stars.png")
+        });
        
 
         this.balls_remaining=0;
@@ -231,8 +237,6 @@ export class PinballWorld extends Simulation {
         const machine_color= color(.5,0,.5,1);
 
         //program_state.lights = [new Light(sun_light_position, color(1,1,1,1), 10**3)];
-
-
 
 
         let left_transform=model_transform.times(Mat4.translation(1,24,4)).times(Mat4.scale(1,24,4));
@@ -350,6 +354,10 @@ export class PinballWorld extends Simulation {
         let score_transform = model_transform.times(Mat4.translation(16, 55, 4)).times(Mat4.scale(2, 2, 2));
         this.shapes.text.set_string(score_string, context.context);
         this.shapes.text.draw(context, program_state, score_transform, this.text_image);
+
+
+        let object_transform = model_transform.times(Mat4.translation(-16, 30, 4));
+        this.shapes.machine_table.draw(context, program_state, object_transform, this.stars);
 
 
 
