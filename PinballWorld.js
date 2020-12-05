@@ -8,260 +8,623 @@ const {
 
 const {Cube, Textured_Phong} = defs
 
-let score = 0;
 
 
-class Pinball extends Body
+
+
+
+class Actor extends Body
 {
-    constructor(world,shape,material)
+    constructor(world,shape,material,model_transform, springiness,sound_effect,object_score_value)
+    {    
+         super(shape,material,vec3(1,1,1));
+         this.world=world;
+         this.alive=true;
+         this.springiness=springiness;
+        
+         this.emplace(model_transform,vec3(0,0,0),0);
+         this.sound_effect=sound_effect;
+         this.object_score_value=object_score_value;
+    }
+
+    react_to_hit()
     {
-        super(world.shapes.sphere,world.materials.pinball,vec3(1,1,1))
+        // playSound(sound_effect);
+         this.world.score+=object_score_value;
+    }
+
+    doSomething(dt)
+    {
+         
+    }
+
+    die()
+    {
+          this.alive=false;
+    }
+
+    
+}
 
 
-        this.alive=true;
+
+
+
+
+
+
+
+class RoundActor extends Actor
+{
+    constructor(world,shape,material,model_transform,springiness,sound_effect,object_score_value,radius)
+    {
+         super(world,shape,material,model_transform,springiness,sound_effect,object_score_value)
+         this.radius=radius;
+   
+    }
+ check_if_ball_inside_and_provide_vel_changes(ball)
+  {
+      return null;
+  }
+
+}
+
+
+
+
+
+class PolyActor extends Actor
+{
+
+
+ constructor(world,shape,material,model_transform,springiness,sound_effect,object_score_value,vertices4D)
+    {
+    super(world,shape,material,model_transform,springiness,sound_effect,object_score_value)
+    this.sides_list=[];
+    let full_vertices_4D=[...vertices4D,vertices4D[0]]
+    let i=0;
+    while (i<full_vertices_4D.length-1)
+    {
+        this.sides_list.push([model_transform.times(full_vertices_4D[i]),model_transform.times(full_vertices_4D[i+1])]);
+        i++;
+    }
+   
+    }
+
+
+  check_if_ball_inside_and_provide_vel_changes(ball,dt)
+  {
+      let i=0;
+      while (i<this.sides_list.length)
+      {
+          let adjustment=this.check_if_crossed_specific_side(dt,ball.center[0],ball.center[1],ball.linear_velocity[0],ball.linear_velocity[1],ball.radius,this.sides_list[i])
+          if (adjustment!=null) return adjustment;
+          i+=1;
+      }
+      return null;
+  }
+
+
+
+  get_m(x,y) {
+    if(x !=0)return y/x;
+    if(y>0) return 999.;
+    return -999.;
+}
+
+my_distance (x1,y1,x2,y2) {
+    var d = Math.sqrt((x1-x2)*(x1-x2)+(y1-y2)*(y1-y2));
+    return d;
+}
+
+get_theta(x,y) {
+    // see https://www.mathsisfun.com/polar-cartesian-coordinates.html
+    let pi = 3.14159265;
+    let pi2 = 2 * 3.14159265;
+    if (x != 0) {
+        let a = Math.atan(y/x);
+        if(x>0 && y>0){ // quadrant I
+           if(a>pi2)a -+ pi2;
+           return a;
+        }
+        if(x<0){  // quadrants II and III
+            a = a + pi;  
+            if(a>pi2)a -+ pi2;
+            return a;
+        }
+        a = a + 2 * pi;
+        if(a>pi2)a -+ pi2;
+        if(a>pi2)a -+ pi2;
+        return a;
+    }
+    if(y>0)return pi/2;
+    return 3*pi/2;
+}
+
+
+point_in_box(x,y,a,b,c,d) {
+    // x,y is our point
+    // (a,b) and (c,d) are the ends of a line segment
+    // testing if on the box tests if the point is on line segment
+    // if we already know the point is on the line
+
+    if(
+        (
+        (x<=a) && (x>=c) ||
+        (x>=a) && (x<=c)
+        )
+        &&
+        (
+        (y<=b) && (y>=d) ||
+        (y>=b) && (y<=d)
+        )
+    ) return true;
+    return false;
+}
+
+  check_if_crossed_specific_side(dt,ball_center_x_pos,ball_center_y_pos,velocity_x,velocity_y,ball_radius,side)
+  {
+      let ball_x=ball_center_x_pos
+      let ball_y=ball_center_y_pos
+      let ball_vel_x=dt*velocity_x
+      let ball_vel_y=dt*velocity_y
+ 
+      let ball_r=ball_radius;
+      var is_vertical_path = false;
+        var is_vertical_wall = false;
+      let side_r = Math.sqrt(  (side[1][0]-side[0][0])*(side[1][0]-side[0][0]) + (side[1][1]-side[0][1])*(side[1][1]-side[0][1]) )
+        // Where is the ball in the next frame?
+        var bx = ball_x + ball_vel_x;
+        var by = ball_y + ball_vel_y;  
+       
+        // Make sure we are at least somewhat close to the target
+        /*
+        var d = this.my_distance( (side[1][0]-side[0][0])/2 , side[1][1]-side[0][1],ball_x,ball_y);
+        if ( (side_r + 2*ball_r ) < d) {
+            return;
+        }
+*/
+        // find velocity
+        var v = Math.sqrt((1/dt)*ball_vel_x * (1/dt)*ball_vel_x+(1/dt)*ball_vel_y * (1/dt)*ball_vel_y);
+
+        // find theta_path, m_path, and b_path
+        var theta_path = this.get_theta(ball_vel_x, ball_vel_y);
+        var m_path = this.get_m(ball_vel_x, ball_vel_y);
+        var b_path = ball_y - m_path * ball_x;   // y intercept of path
+
+        // find the theta_wall, m_wall, and b_wall
+        var wall_dy = side[1][1] - side[0][1];
+        var wall_dx = side[1][0] - side[0][0];
+        var theta_wall = this.get_theta(wall_dx, wall_dy);
+        var m_wall = this.get_m(wall_dx, wall_dy);
+        var b_wall = side[0][1] - m_wall * side[0][0];   // y intercept of path
+               
+        // Find collision point
+        var collision_x = 0;
+        var collision_y = 0;
+
+        if(wall_dx == 0) {   // vertical wall
+            is_vertical_wall = true;
+            if(wall_dy != 0) {
+                if (ball_vel_x==0) return null;
+                // calculate intersection
+                // x is fixed because line is vertical
+                collision_x = side[0][0];
+                collision_y = ball_y + (ball_vel_y/ball_vel_x)*(side[0][0]-ball_x);
+
+                //console.log("vertical wall collides " + collision_x
+                   //  + "," + collision_y);
+
+            }
+            else { // wall is a point;
+                m_wall = -999;  // approximation
+                theta_wall = -3.14159/2;
+                collision_x = side[0][0];
+                collision_y = side[0][1];
+                console.log("point wall collides " + collision_x +
+                    "," + collision_y );
+            }
+        }
+        else {
+            is_vertical_wall = false;
+
+            // find the point of collision
+            // b= y-mx for both lines, and at crossing y and x are the same
+            // b1 = y-m1x; y = m2x + b2;
+            // b1 = (m2x + b2) - m1x = (m2-m1)x + b2;
+            // x = (b1-b2)/(m2-m1)
+
+            if(m_path == m_wall) {
+                console.log("No collision, wall and path are parallel.");
+                return false; // avoid errors
+            }
+            collision_x = (b_path - b_wall)/(-m_path + m_wall);
+            collision_y = m_path * collision_x + b_path;
+           // console.log("Path collides with wall at " + collision_x +
+        //            "," + collision_y );
+        }
+
+            // see how close we are to the crossing point  
+            //
+            var d1 = collision_x - ball_x;
+            var d2 = collision_y - ball_y;
+            var d3 = d1*d1 + d2*d2;
+            var distance_to_collision = Math.sqrt(d3);
+            if (distance_to_collision>5) {          // must be within 5 units for a hit
+                return;
+            }
+
+            // Make sure the colliison point is on the wall segment
+
+            if(!this.point_in_box(collision_x, collision_y, side[0][0], side[0][1], side[1][0], side[1][1]))
+            {
+      //          console.log("The collision point is not on the line segement.");
+                return;
+            }
+            else console.log("The collision point IS on the line segement.");
+
+            // find the bounce direction
+            //    IS THIS CORRECT?
+            var theta_bounce = 2*theta_wall - theta_path;
+
+            // find the new velocities and position
+            let anuvx = v * Math.cos(theta_bounce);
+            let anuvy = v * Math.sin(theta_bounce);
+            let anux = ball_x + anuvx;
+            let anuy = ball_y + anuvy;
+
+            //  Make sure this is further from the intersection point
+            distance_to_collision = this.my_distance (ball_x, ball_y, collision_x, collision_y);
+
+            // Check if the point now and in the next frame are on opposite sides of the wall
+            // If not, we are headed in the wrong direction
+
+            // Two given points P(x1, y1) and Q(x2, y2) will lie on the same side of the line
+            // ax+by+c=0 if ax1+by1+c and ax2+by2+c will have same signs.
+            // On the other hand, P(x1, y1) and Q(x2, y2) will lie on the
+            // opposite sides of the line ax+by+c=0 if ax1+by1+c and ax2+by2+c will have opposite signs.
+
+            let test1 = m_wall * ball_x - ball_y + b_wall;
+            let test2 = m_wall * (ball_x+ball_vel_x) - (ball_y+ball_vel_y) + b_wall;
+            let test3 = test1*test2;
+
+            if(test3>0){
+                console.log("The travel path does not cross the wall so no bounce.");
+                return null;
+            }
+
+            //a.vx = v * Math.cos(theta_bounce);
+            //a.vy = v * Math.sin(theta_bounce);
+
+            // a.x = a.x + avx;
+            // a.y = a.y + avy;
+            /*
+            console.log("Bounce============");
+            console.log("Ball location = " + a.x + "," + a.y);
+            console.log("Ball velocity = " + a.vx + "," + a.vy);
+            console.log("No turn destination = " + (a.x+a.vx) + "," + (a.y+a.vy));
+            console.log("Collision point = " + collision_x + "," + collision_y);
+            console.log("Ball distance from intersection = " + distance_to_collision);
+            console.log("Ball new velocity = " +  anuvx + "," + anuvy);
+            console.log("Theta travel = " + theta_path );
+            const le.log("Theta bounce =" + theta_bounce);
+*/
+            
+            let new_vels=[anuvx,anuvy]
+            return new_vels;
+
+    }
+ }
+
+
+class Flipper extends PolyActor
+{
+    constructor(world)
+    {
         this.world=world;
-        this.launched=false;
+    }
+    doSomething(dt)
+    {
 
-        // this.trapped
-        let model_transform=Mat4.identity().times(Mat4.translation(31,4,2.6)).times(Mat4.scale(.6,.6,.6))
-        //collision_adjust();
-        this.emplace(model_transform,vec3(0,0,0),0)
+    }
+}
+
+
+
+class Pinball extends RoundActor
+{
+    constructor(world, width)
+    {
+
+        let model_transform=Mat4.identity().times(Mat4.translation(width-2,5,4)).times(Mat4.scale(.6,.6,.6))
+        
+        super(world, world.shapes.sphere,world.materials.pinball,model_transform,1,0,0,.6)
+    
+        this.launched=false;
+        
 
     }
 
     doSomething(dt)
     {
-        if (!this.launched && this.world.launch_ball)
+       
+        
+        if (this.launched)
         {
-            this.get_launched(this.world.launch_speed);
-        }
-        this.apply_gravity(dt);
-        //collision_adjust();
-
-
-        let detected_body = this.world.collide_check(this);
-        if (detected_body!=null)
+            this.apply_gravity(dt);
+            let vel_changes=this.world.adjust_ball_velocity_for_collisions(this,dt);
+            if (vel_changes!=null)
+            this.change_velocities(vel_changes[0],vel_changes[1]);
+            if (this.center[1]<4.2)
         {
-            // if (this.world.camera_focus==this)
-            //     this.world.camera_focus=null;
-            this.collide(detected_body);
+            this.die();
+           
             
-
-
         }
-        if (this.center[1]>45.4)
-        {
-            this.linear_velocity[1]*=-1;
         }
-        if (this.center[0]< 2.6|| this.center[0]> 31.4)
-        {
-            this.linear_velocity[0]*=-1;
-        }
-        if (this.center[1]<3.9)
-        {
-            this.alive=false;
-            if (this.world.camera_focus==this)
-                this.world.camera_focus=null;
-            return;
-        }
+        
+       
+        
 
 
 
     }
 
-    distance(a){ // distance to actor a
-        var d = (this.center[0] - a.center[0]) * (this.center[0] - a.center[0]) + (this.center[1] - a.center[1]) * (this.center[1] - a.center[1]);
-        var e = Math.sqrt(d);
-        return e;
-    }
-
-    collide(a){  // need to check for self collision
-        var d = this.distance(a);
-        var theta_travel = 0;
-//        if ( (this.r + a.r ) >= d) {
-
-        // find velocity
-        var v = Math.sqrt(this.linear_velocity[0] * this.linear_velocity[0] + this.linear_velocity[1] *this.linear_velocity[1]);
-
-        // find direction of travel as angle
-
-
-
-        // probably better calculated earlier when v set
-        // theck for vx=0;
-
-        if(this.linear_velocity[0] == 0) {
-            if(this.linear_velocity[1] > 0) theta_travel = 3.14159/2;
-            else theta_travel = -3.14159/2;
-        }
-        else {
-            theta_travel = Math.atan(this.linear_velocity[1]/this.linear_velocity[0]);
-            // probably better calculated earlier when v set
-            // theck for vx=0;
-        }
-        var dy = a.center[1] - this.center[1];
-        var dx = a.center[0] - this.center[0];
-        var theta_position=0;
-        if(dx == 0) {   // vertical
-            if(dy > 0) theta_position = 3.14159/2;
-            else  theta_position = -3.14159/2;
-        }
-        else {
-            var theta_position = Math.atan(dy/dx);
-        }
-
-
-        let df=.9;
-
-        var theta_bounce = 2 * theta_travel - theta_position;  // does not seem right
-        this.linear_velocity[1] = v * Math.sin(theta_bounce);
-        this.linear_velocity[0] = v * Math.cos(theta_bounce);
-
-
-        score += 10;
-        //console.log(score);
-    }
-
-
-    get_launched(speed)
+    die()
     {
-        this.linear_velocity=vec3(-.7*speed,3*speed,0)
+
+         super.die();
+         if (this.world.camera_focus==this)
+                this.world.camera_focus=null;
+         this.world.active_balls-=1;
+    }
+
+
+    change_velocities(x_vel, y_vel)
+    {  
+        this.linear_velocity[0]=x_vel;
+        this.linear_velocity[1]=y_vel;
+    }
+
+
+    get_launched()
+    {
+        this.change_velocities(0,6*this.world.launch_speed+Math.random(0,1))
         this.launched=true;
-        this.world.launch_ball=false;
-        this.world.ball_in_launcher=false;
-        this.world.balls_remaining-=1;
         this.world.camera_focus=this;
     }
 
-
     apply_gravity(dt)
     {
-        //current_time=program_state.animation_time / 1000;
-        let gravity=6;
-        if (this.launched)
-        {
-            this.linear_velocity[1]-=gravity*dt;
-        }
+       
+        let gravity=12;
+        this.linear_velocity[1]-=gravity*dt;
+      
 
     }
 
-    //  check_for_death(){}
+    
 
 }
 
-class Obstacle extends Body{
-    constructor(model_transform,springiness,shape,material)//,light_effect,sound_effect)
-    {
-        super(shape,material,vec3(1,1,1))
-        this.springiness=springiness;
-        this.emplace(model_transform,vec3(0,0,0),0)
 
 
-    }
 
-    doSomething(dt)
-    {
-
-    }
-}
 
 
 export class PinballWorld extends Simulation {
-    constructor() {
-        // constructor(): Scenes begin by populating initial values like the Shapes and Materials they'll need.
-        super();
-        this.ball_focus=false;
-        this.camera_focus=null;
+    
+
+    constructor() 
+    {
         
-        // At the beginning of our program, load one of each of these shape definitions onto the GPU.
-        this.shapes = {
+        super();
+        //Camera-related settings
+        this.ball_focus=false;
+        this.initial_camera_location = Mat4.look_at(vec3(15, 25, 90), vec3(15, 25, 0), vec3(0, 1, 1));
+        this.camera_focus=null;
+
+
+
+        
+        //Shape Options
+        this.shapes = 
+        {
 
             sphere: new defs.Subdivision_Sphere(4),
             cube: new defs.Cube(),
             circle: new defs.Regular_2D_Polygon(1, 15),
             cylinder: new defs.Capped_Cylinder(10,10,[0,150]),
             text: new Text_Line(10),
-            machine_table: new Shape_From_File("assets/teapot.obj"),
-
+            machine_table: new Shape_From_File("assets/machine-rebuilt.obj"),
+            left_flipper: new Shape_From_File("assets/flip-left.obj"),
+            right_flipper: new Shape_From_File("assets/flip-right.obj"),
         };
 
 
+
+
+        //Animation-related settings
         this.time_scale/=800;
 
 
-        //texture stuff
 
+
+
+        //Texture Options
         const bump = new defs.Fake_Bump_Map(1);
         const texture = new defs.Textured_Phong(1);
 
-        // *** Materials
-        this.materials = {
-            pinball: new Material(bump, (new defs.Phong_Shader(),
-                {ambient: 0.5, diffusivity: 0.5, specularity: 0.5, texture: new Texture("assets/pinball_metal.png")})),
-            wall: new Material(bump, (new defs.Phong_Shader(),
-                {ambient: 1, diffusivity: 0.5, specularity: 0.5, texture: new Texture("assets/wood.jpg")})),
 
-            nail: new Material(new defs.Phong_Shader(),
-                {ambient: 1, diffusivity: 0.5, specularity: 0.5, color: hex_color("#ffffff")}),
-            floor: new Material(new defs.Phong_Shader(),
-                {ambient: 0.5, diffusivity: 0.5, specularity: 0.5, color: hex_color("#f74032")}),
 
-        }
 
-        // To show text you need a Material like this one:
-        this.text_image = new Material(texture, {
-            ambient: 1, diffusivity: 0, specularity: 0,
-            texture: new Texture("assets/text.png")
-        });
 
-        //test texture for obj
-        this.stars = new Material(new defs.Textured_Phong(1), {
-            color: color(.5, .5, .5, 1),
-            ambient: .3, diffusivity: .5, specularity: .5, texture: new Texture("assets/stars.png")
-        });
+        //Material Options
+        this.materials = 
+        {
+            pinball: 
+            new Material
+            (
+                  bump, 
+                  (
+                        new defs.Phong_Shader(),
+                        {
+                            ambient: 0.5, diffusivity: 0.5, specularity: 0.5, 
+                            texture: new Texture("assets/pinball_metal.png")
+                        }   
+                  )
+            ),
+
+
+
+            wall: 
+            new Material
+            (
+                  bump, 
+                  (
+                        new defs.Phong_Shader(),
+                        {
+                             ambient: 1, diffusivity: 0.5, specularity: 0.5, 
+                             texture: new Texture("assets/wood.jpg")
+                        }
+                  )
+            ),
+
+
+
+            nail: 
+            new Material
+            (
+                new defs.Phong_Shader(),
+                {
+                    ambient: 1, diffusivity: 0.5, specularity: 0.5, color: hex_color("#ffffff")
+                }
+            ),
+
+
+
+            floor: 
+            new Material
+            (
+                new defs.Phong_Shader(),
+                {
+                    ambient: 0.5, diffusivity: 0.5, specularity: 0.5, color: hex_color("#f74032")
+                }
+            ),
+
+
+
+            stars: 
+            new Material
+            (
+                 new defs.Textured_Phong(1), 
+                 {
+            
+                    ambient: .3, diffusivity: .5, specularity: .5, color: color(.5, .5, .5, 1),
+                    texture: new Texture("assets/stars.png")
+                 }
+            ),
+
+
+            text_image:
+            new Material
+            (
+                texture, 
+                {
+                     ambient: 1, diffusivity: 0, specularity: 0,
+                     texture: new Texture("assets/text.png")
+                }
+            )
+        };
+
+
+
+        //Initial Game Settings
+      
+        this.multiball_mode=true;
+        this.balls_remaining=0;
+        this.active_balls=0;
+
+        //Launcher-related-settings
+        this.launch_speed=0;
+        this.ball_currently_in_launcher=null;
+        
+     
+        //Score/Text box settings
+        this.score = 0;
        
 
-        this.balls_remaining=0;
-        this.game_started=false;
-        this.launch_speed=0;
-        this.ball_in_launcher=false;
-        this.launch_ball=false;
-        this.score = 0;
-
-
-
-        this.initial_camera_location = Mat4.look_at(vec3(15, 25, 90), vec3(15, 25, 0), vec3(0, 1, 1));
+        this.board_top= 80;
+        this.board_right= 70;
 
         let model_transform = Mat4.identity();
+        
+        
 
-        const machine_color= color(.5,0,.5,1);
+        let diag_transform=model_transform.times(Mat4.translation(this.board_right-3,this.board_top-3,3.25)).times(Mat4.rotation(Math.PI/4,0,0,1)).times(Mat4.scale(1,5,4))
+        
+        //Cube vertex coordinates
+        let top_right=vec4(1,1,0,1);
+        let bot_right=vec4(1,-1,0,1);
+        let bot_left=vec4(-1,-1,0,1);
+        let top_left=vec4(-1,1,0,1);
+        
+        let cube_vertices= [bot_left,top_left,top_right,bot_right]
+        
 
-        //program_state.lights = [new Light(sun_light_position, color(1,1,1,1), 10**3)];
+        //Machine building
+        let left_transform=model_transform.times(Mat4.translation(-1,this.board_top/2,4)).times(Mat4.scale(1,this.board_top/2,4.2))
+        let right_transform=model_transform.times(Mat4.translation(this.board_right+1,this.board_top/2,4)).times(Mat4.scale(1,this.board_top/2,4.2))
+        let top_transform=model_transform.times(Mat4.translation(this.board_right/2,this.board_top+1,4)).times(Mat4.scale(this.board_right/2+2,1,4.2))
+        let bottom_transform=model_transform.times(Mat4.translation(this.board_right/2,-1,4)).times(Mat4.scale(this.board_right/2+2,1,4.2))
+        let right_barrier=model_transform.times(Mat4.translation(this.board_right-6,this.board_top/2-6,4)).times(Mat4.scale(1,this.board_top/2-6,4.2))
+        let diag_start_mat=model_transform.times(Mat4.translation((this.board_right-7)/2,12,4))
+        let diag_adjust_mat=model_transform.times(Mat4.translation((this.board_right-7)*6.7/20,0,0)).times(Mat4.rotation(-Math.PI/2.5,0,0,1)).times(Mat4.scale(2,(this.board_right-7)*1/15,1))
+        let left_diag=model_transform.times(diag_start_mat).times(Matrix.of([-1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1])).times(diag_adjust_mat)
+        let right_diag=model_transform.times(diag_start_mat).times(diag_adjust_mat)
+        let flip_adjust_mat=model_transform.times(Mat4.translation((this.board_right-7)*6/20,0,0)).times(Mat4.rotation(-Math.PI/2.5,0,0,1)).times(Mat4.translation(0,-(this.board_right-7)/6
+        ,0))
+.times(Mat4.rotation(3*Math.PI/2,0,0,1)).times(Mat4.rotation(Math.PI/2,1,0,0)).times(Mat4.scale((this.board_right-7)*1/12,(this.board_right-7)*1/12,(this.board_right-7)*1/12))
+        let left_flip_partial_transform=model_transform.times(diag_start_mat).times(Matrix.of([-1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1])).times(flip_adjust_mat)
+        let right_flip_partial_transform=model_transform.times(diag_start_mat).times(flip_adjust_mat)
 
 
-        let left_transform=model_transform.times(Mat4.translation(1,24,4)).times(Mat4.scale(1,24,4));
-        let right_transform=model_transform.times(Mat4.translation(33,24,4)).times(Mat4.scale(1,24,4));
-        let bottom_transform=model_transform.times(Mat4.translation(17,1,4)).times(Mat4.scale(16,1,4));
-        let top_transform=model_transform.times(Mat4.translation(17,47,4)).times(Mat4.scale(16,1,4));
+        let right_flipper_side=model_transform.times(diag_start_mat).times(Mat4.translation((this.board_right-7)*(4.5/12),5.2,-.2)).times(Mat4.scale(2,5.5,1))
+        let left_flipper_side=model_transform.times(diag_start_mat).times(Matrix.of([-1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1])).times(Mat4.translation((this.board_right-7)*(4.5/12),5.2,-.2)).times(Mat4.scale(2,5.5,1))
+        this.bodies=[new PolyActor(this,this.shapes.cube, this.materials.wall,left_transform,1,0,0,cube_vertices),
+            new PolyActor(this,this.shapes.cube, this.materials.wall,right_transform,1,0,0,cube_vertices),
+           new PolyActor(this,this.shapes.cube, this.materials.wall,top_transform,1,0,0,cube_vertices),
+           new PolyActor(this,this.shapes.cube, this.materials.wall,bottom_transform,1,0,0,cube_vertices),
+            new PolyActor(this,this.shapes.cube, this.materials.wall,diag_transform,1,0,0,cube_vertices),
+            new PolyActor(this,this.shapes.cube, this.materials.wall,right_barrier,1,0,0,cube_vertices),
+            new PolyActor(this,this.shapes.cube, this.materials.wall,left_diag,1,0,0,cube_vertices),
+            new PolyActor(this,this.shapes.cube, this.materials.wall,right_diag,1,0,0,cube_vertices),
+            new PolyActor(this,this.shapes.left_flipper, this.materials.stars,left_flip_partial_transform,1,0,0,cube_vertices),
+            new PolyActor(this,this.shapes.left_flipper, this.materials.stars,right_flip_partial_transform,1,0,0,cube_vertices),
+            new PolyActor(this,this.shapes.cube, this.materials.wall,right_flipper_side,1,0,0,cube_vertices),
+            new PolyActor(this,this.shapes.cube, this.materials.wall,left_flipper_side,1,0,0,cube_vertices),
+            ]
+
+          //  new PolyActor(this,this.shapes.cube, this.materials.wall,bottom_transform,1,0,0),
+            
+          //  new PolyActor(this,this.shapes.cube, this.materials.wall,model_transform.times(Mat4.translation(5,5,4)),1,0,0,[[4,4],[4,6],[6,6],[6,4]])
+            
 
 
-
-        this.bodies=[new Obstacle(left_transform,0,this.shapes.cube, this.materials.wall),
-            new Obstacle(right_transform,0,this.shapes.cube, this.materials.wall),
-            new Obstacle(bottom_transform,0,this.shapes.cube, this.materials.wall),
-            new Obstacle(top_transform,0,this.shapes.cube, this.materials.wall)]
-
+       
+ 
+        //Obstacle Building
 
         var i;
-        var j;
+        var j; 
         for (i=5;i<27;i+=2)
         {
             for (j=5;j<25;j+=2)
             {
-
+                
                 if (i%4==j%4) continue;
-                let obj_transform=Mat4.identity().times(Mat4.translation(j,i,4)).times(Mat4.scale(.2,.2,3));
-                this.bodies.push(new Obstacle(obj_transform,0,this.shapes.cylinder, this.materials.pinball))
+                let obj_transform=Mat4.identity().times(Mat4.translation(j,i,4)).times(Mat4.scale(.5,.5,.5));
+      //           this.bodies.push(new PolyActor(this,this.shapes.cube, this.materials.pinball,obj_transform,1,0,0,[[j-.5,i-.5],[j-.5,i+.5],[j+.5,i+.5],[j+.5,i-.5]]))
 
             }
         }
@@ -272,29 +635,42 @@ export class PinballWorld extends Simulation {
 
 
 
-    collide_check(ball)
+    adjust_ball_velocity_for_collisions(ball,dt)
     {
-        if (ball.launched==false) return null;
+        
         var i;
 
         for  (i=0; i<this.bodies.length;i++)
         {
-            ball.inverse=Mat4.inverse(ball.drawn_location)
-            if(this.bodies[i].center[1]!=4&&ball.check_if_colliding(this.bodies[i], {intersect_test: Body.intersect_sphere, points: new defs.Subdivision_Sphere(1), leeway: .1}))
-                return this.bodies[i];
+            if(this.bodies[i].center[1]!=4)
+            {
+                let vel_adjustments=this.bodies[i].check_if_ball_inside_and_provide_vel_changes(ball,dt);
+                if (vel_adjustments!= null)
+                return vel_adjustments;
+            }
+
+                
 
 
         }
-        return null;
+      return null;
     }
 
 
     start_game()
     {
-        if (this.game_started) return;
-        this.game_started=true;
         this.balls_remaining=5;
+        this.place_ball_in_launcher();
     }
+
+    end_game()
+    {
+        //some kind of print to log
+        this.score=0;
+
+    }
+
+
     make_control_panel(context,program_state) {
         // Draw the scene's buttons, setup their actions and keyboard shortcuts, and monitor live measurements.
         this.key_triggered_button("Start Game", ["Control", "0"], () => this.start_game())
@@ -302,16 +678,34 @@ export class PinballWorld extends Simulation {
         this.key_triggered_button("Pull spring back more", ["Control", "1"], () => this.launch_speed=Math.min(10,this.launch_speed+1));
         this.key_triggered_button("Pull spring back less", ["Control", "2"], () => this.launch_speed=Math.max(0,this.launch_speed-1));
         this.new_line();
-        this.key_triggered_button("Launch Pinball", ["Control", "3"], () => {if (this.ball_in_launcher) this.launch_ball=true; });
+        this.key_triggered_button("Launch Pinball", ["Control", "3"], () => {this.launch_ball()});
         this.key_triggered_button("Switch camera", ["Control", "4"], () => this.ball_focus=!this.ball_focus);
         //this.new_line();
 
     }
 
 
+    launch_ball()
+    {
+        if (this.ball_currently_in_launcher!=null)
+        {
+        this.ball_currently_in_launcher.get_launched();
+        this.ball_currently_in_launcher=null;
+        if (!this.multiball_mode)
+        this.balls_remaining-=1;
+        this.active_balls+=1;
+        }
+    }
 
 
+    place_ball_in_launcher()
+    {   
+        let new_pinball=new Pinball(this, this.board_right);
+        this.bodies.push(new_pinball);
+        this.ball_currently_in_launcher=new_pinball;
+    }
 
+    
     display(context,program_state) {
 
         // display():  Called once per frame of animation.
@@ -338,7 +732,7 @@ export class PinballWorld extends Simulation {
         let model_transform=Mat4.identity();
 
 
-        let below_transform=model_transform.times(Mat4.translation(16,24,1)).times(Mat4.scale(16,24,1))
+        let below_transform=model_transform.times(Mat4.translation(this.board_right/2,this.board_top/2,1)).times(Mat4.scale(this.board_right/2+1,this.board_top/2+1,1))
         this.shapes.cube.draw(context, program_state, below_transform, this.materials.floor);
 
 
@@ -346,54 +740,49 @@ export class PinballWorld extends Simulation {
         else program_state.set_camera(this.initial_camera_location);
         super.display(context,program_state);
 
-        if (this.ball_focus && this.camera_focus!=null) program_state.set_camera(Mat4.inverse(this.camera_focus.drawn_location.times(Mat4.translation(0,0,20))));
-        else program_state.set_camera(this.initial_camera_location);
-        super.display(context,program_state);
 
-        let score_string = score.toString();
+        let score_string = this.score.toString();
         let score_transform = model_transform.times(Mat4.translation(16, 55, 4)).times(Mat4.scale(2, 2, 2));
         this.shapes.text.set_string(score_string, context.context);
-        this.shapes.text.draw(context, program_state, score_transform, this.text_image);
+        this.shapes.text.draw(context, program_state, score_transform, this.materials.text_image);
 
 
-        let object_transform = model_transform.times(Mat4.translation(-16, 30, 4));
-        this.shapes.machine_table.draw(context, program_state, object_transform, this.stars);
+        let object_transform = model_transform.times(Mat4.translation(-16, 30, 4)).times(Mat4.scale(6,6,6));
+        this.shapes.machine_table.draw(context, program_state, object_transform, this.materials.stars);
 
 
 
 
 
     }
+
+
+
     update_state(dt)
     {
 
+        if (this.ball_currently_in_launcher==null && ((this.balls_remaining>0&&this.active_balls==0) || this.multiball_mode))
+        {
+        this.place_ball_in_launcher();
 
-
+        
+        }
         var i;
         for  (i=0; i<this.bodies.length;i++)
         {
 
-            // if (PinballArray[i]!=null)
+            
             this.bodies[i].doSomething(dt);
-            // if (PinballArray[i].isAlive()==false)
-            // PinballArray[i]=null;
+   
 
         }
 
-        if (this.game_started&&this.ball_in_launcher==false&&this.balls_remaining!=0)
-        {
-
-            this.bodies.push(new Pinball(this,this.shapes.sphere,this.materials.pinball));
-            this.ball_in_launcher=true;
-
-        }
+        
         for  (i=0; i<this.bodies.length;i++)
         {
             if (this.bodies[i].alive==false)
-                // if (PinballArray[i]!=null)
                 this.bodies.splice(i,1);
-            // if (PinballArray[i].isAlive()==false)
-            // PinballArray[i]=null;
+         
 
         }
 
@@ -401,6 +790,29 @@ export class PinballWorld extends Simulation {
 
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 class Gouraud_Shader extends Shader {
     // This is a Shader using Phong_Shader as template
