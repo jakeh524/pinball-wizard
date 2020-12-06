@@ -9,7 +9,8 @@ const {
 const {Cube, Textured_Phong} = defs
 
 
-
+let score = 0;
+var bounce_sound, launch_sound, lost_ball_sound;
 
 
 
@@ -100,7 +101,7 @@ class PolyActor extends Actor
        while (i<this.sides_list.length)
        {
            let corner_transform=Mat4.identity().times(Mat4.translation(this.sides_list[i][0][0],this.sides_list[i][0][1],4)).times(Mat4.scale(.2,.2,.2));
-           this.world.shapes.cube.draw(context,program_state,corner_transform,this.world.materials.test);
+           this.world.shapes.cube.draw(context,program_state,corner_transform,this.world.materials.red_steel);
            i=i+1;
        }
    }
@@ -362,7 +363,7 @@ class Flipper extends PolyActor
         {
             rest_transform=model_transform.times(flip_start_mat).times(refl_matrix).times(flip_adjust_mat)
         }
-        super(world, world.shapes.left_flipper, world.materials.stars, rest_transform, 0, 0, 1, flipper_coords )
+        super(world, world.shapes.left_flipper, world.materials.rusty_metal, rest_transform, 0, 0, 1, flipper_coords )
         this.world=world;
         this.flipper_position=0;
 
@@ -438,7 +439,7 @@ class Pinball extends RoundActor
 
         let model_transform=Mat4.identity().times(Mat4.translation(width-2,5,4)).times(Mat4.scale(.6,.6,.6))
         
-        super(world, world.shapes.sphere,world.materials.pinball,model_transform,1,0,0,.6)
+        super(world, world.shapes.sphere,world.materials.iron,model_transform,1,0,0,.6)
     
         this.launched=false;
         
@@ -521,7 +522,9 @@ export class PinballWorld extends Simulation {
         super();
         //Camera-related settings
         this.ball_focus=false;
-        this.initial_camera_location = Mat4.look_at(vec3(15, 25, 90), vec3(15, 25, 0), vec3(0, 1, 1));
+        // camera location
+        this.initial_camera_location = Mat4.look_at(vec3(35, -55, 90), vec3(35, 45, 0), vec3(0, 1, 1));
+        //this.initial_camera_location = Mat4.look_at(vec3(15, 25, 90), vec3(15, 25, 0), vec3(0, 1, 1));
         this.camera_focus=null;
 
     
@@ -535,25 +538,34 @@ export class PinballWorld extends Simulation {
             cube: new defs.Cube(),
             circle: new defs.Regular_2D_Polygon(1, 15),
             cylinder: new defs.Capped_Cylinder(10,10,[0,150]),
-            text: new Text_Line(10),
-            machine_table: new Shape_From_File("assets/machine-rebuilt.obj"),
+            text: new Text_Line(15),
+            machine_table: new Shape_From_File("assets/machine-table.obj"),
+            machine_legs: new Shape_From_File("assets/machine-legs.obj"),
+            machine_backboard: new Shape_From_File("assets/machine-backboard.obj"),
+            //machine_table: new Shape_From_File("assets/machine-rebuilt.obj"),
             left_flipper: new Shape_From_File("assets/flip-left.obj"),
             right_flipper: new Shape_From_File("assets/flip-right.obj"),
+            nail: new Shape_From_File("assets/nail5.obj"),
+            bouncer: new Shape_From_File("assets/bouncer.obj"),
+            mushroom: new Shape_From_File("assets/mushroom.obj"),
+            background_floor: new defs.Cube(),
+            background_wall: new defs.Cube(),
+            backboard: new defs.Cube()
         };
 
-
+        // scale the textures for the background floor so textures repeat
+        this.shapes.background_floor.arrays.texture_coord.forEach(v => v.scale_by(2));
+        this.shapes.background_wall.arrays.texture_coord.forEach(v => v.scale_by(3));
+        this.shapes.backboard.arrays.texture_coord.forEach(v => v.scale_by(2));
 
 
         //Animation-related settings
         this.time_scale/=800;
 
 
-
-
-
-        //Texture Options
-        const bump = new defs.Fake_Bump_Map(1);
-        const texture = new defs.Textured_Phong(1);
+//         //Texture Options
+//         const bump = new defs.Fake_Bump_Map(1);
+//         const texture = new defs.Textured_Phong(1);
 
 
 
@@ -561,87 +573,76 @@ export class PinballWorld extends Simulation {
         
         this.left_flipper_cooldown=0;
         this.right_flipper_cooldown=0;
-        //Material Options
-        this.materials = 
-        {
-            pinball: 
-            new Material
-            (
-                  bump, 
-                  (
-                        new defs.Phong_Shader(),
-                        {
-                            ambient: 0.5, diffusivity: 0.5, specularity: 0.5, 
-                            texture: new Texture("assets/pinball_metal.png")
-                        }   
-                  )
-            ),
+        
+        // *** Materials
+        this.materials = {
 
+            black: new Material(new defs.Phong_Shader(),
+                {color: hex_color("#000000"), ambient: 0.5, diffusivity: 0.5, specularity: 0.5}),
 
+            rusty_metal: new Material(new Textured_Phong(), { // use for obstacles
+                color: hex_color("#000000"),
+                ambient: 0.5, diffusivity: 0.5, specularity: 0.5,
+                texture: new Texture("assets/rust-tex.jpg")}),
 
-            wall: 
-            new Material
-            (
-                  bump, 
-                  (
-                        new defs.Phong_Shader(),
-                        {
-                             ambient: 1, diffusivity: 0.5, specularity: 0.5, 
-                             texture: new Texture("assets/wood.jpg")
-                        }
-                  )
-            ),
+            rusty_metal2: new Material(new Textured_Phong(), { // use for obstacles
+                color: hex_color("#000000"),
+                ambient: 0.5, diffusivity: 0.5, specularity: 0.5,
+                texture: new Texture("assets/rust-tex2.jpg")}),
 
-
-
-            nail: 
-            new Material
-            (
-                new defs.Phong_Shader(),
-                {
-                    ambient: 1, diffusivity: 0.5, specularity: 0.5, color: hex_color("#ffffff")
-                }
-            ),
-
-
-
-            floor: 
-            new Material
-            (
-                new defs.Phong_Shader(),
-                {
-                    ambient: 0.5, diffusivity: 0.5, specularity: 0.5, color: hex_color("#f74032")
-                }
-            ),
-
-
-
-            stars: 
-            new Material
-            (
-                 new defs.Textured_Phong(1), 
-                 {
+            iron: new Material(new Textured_Phong(), { // use for pinball
+                color: hex_color("#000000"),
+                ambient: 0.5, diffusivity: 0.1, specularity: 1,
+                texture: new Texture("assets/iron.jpg")}),
             
-                    ambient: .3, diffusivity: .5, specularity: .5, color: color(.5, .5, .5, 1),
-                    texture: new Texture("assets/stars.png")
-                 }
-            ),
-            test: new Material(new defs.Phong_Shader(),
-            {
-            ambient:1,diffusivity:.6,color:hex_color("#0000ff")}),
-            
-            
-            text_image:
-            new Material
-            (
-                texture, 
-                {
-                     ambient: 1, diffusivity: 0, specularity: 0,
-                     texture: new Texture("assets/text.png")
-                }
-            )
+            metallic_plate: new Material(new Textured_Phong(), {
+                color: hex_color("#000000"),
+                ambient: 0.5, diffusivity: 0.5, specularity: 0.5,
+                texture: new Texture("assets/metallic-plate.jpg")}),
 
-        };
+            wood: new Material(new Textured_Phong(), { // use for background
+                color: hex_color("#000000"),
+                ambient: 0.3, diffusivity: 0.8, specularity: 0.1,
+                texture: new Texture("assets/hardwood_floor.jpg")}),
+
+            brick: new Material(new Textured_Phong(), { // use for background
+                color: hex_color("#000000"),
+                ambient: 0.3, diffusivity: 0.8, specularity: 0.1,
+                texture: new Texture("assets/brick_weathered.jpg")}),
+
+            siding: new Material(new Textured_Phong(), {
+                color: hex_color("#000000"),
+                ambient: 0.3, diffusivity: 0.8, specularity: 0.1,
+                texture: new Texture("assets/siding.jpg")}),
+
+            red_steel: new Material(new Textured_Phong(), {
+                color: hex_color("#000000"),
+                ambient: 0.7, diffusivity: 0.8, specularity: 0.5,
+                texture: new Texture("assets/red_steel.jpg")}),
+
+            blocks: new Material(new Textured_Phong(), {
+                color: hex_color("#000000"),
+                ambient: 0.3, diffusivity: 0.8, specularity: 0.1,
+                texture: new Texture("assets/blocks.jpg")}),
+
+            red_velvet: new Material(new Textured_Phong(), {
+                color: hex_color("#000000"),
+                ambient: 0.7, diffusivity: 0.8, specularity: 0.1,
+                texture: new Texture("assets/red_velvet.jpg")}),
+
+                
+        }
+
+        // To show text you need a Material like this one:
+        this.text_image = new Material(new Textured_Phong(), {
+            ambient: 1, diffusivity: 0, specularity: 0,
+            texture: new Texture("assets/text.png")
+        });
+
+        // sound initialization
+        bounce_sound = new Audio("assets/pinball_bounce.mp3");
+        launch_sound = new Audio("assets/firing_ball.mp3");
+        lost_ball_sound = new Audio("assets/lost_ball.mp3");
 
 
 
@@ -724,17 +725,17 @@ export class PinballWorld extends Simulation {
 
 
 
-        this.bodies=[new PolyActor(this,this.shapes.cube, this.materials.wall,left_transform,1,0,0,cube_vertices),
-           new PolyActor(this,this.shapes.cube, this.materials.wall,right_transform,1,0,0,cube_vertices),
-           new PolyActor(this,this.shapes.cube, this.materials.wall,top_transform,1,0,0,cube_vertices),
-           new PolyActor(this,this.shapes.cube, this.materials.wall,bottom_transform,1,0,0,cube_vertices),
-           new PolyActor(this,this.shapes.cube, this.materials.wall,diag_transform,1,0,0,cube_vertices),
-           new PolyActor(this,this.shapes.cube, this.materials.wall,right_barrier,1,0,0,cube_vertices),
-           new PolyActor(this,this.shapes.cube, this.materials.wall,left_diag,1,0,0,cube_vertices),
-           new PolyActor(this,this.shapes.cube, this.materials.wall,right_diag,1,0,0,cube_vertices),
+        this.bodies=[new PolyActor(this,this.shapes.cube, this.materials.red_steel,left_transform,1,0,0,cube_vertices),
+           new PolyActor(this,this.shapes.cube, this.materials.red_steel,right_transform,1,0,0,cube_vertices),
+           new PolyActor(this,this.shapes.cube, this.materials.red_steel,top_transform,1,0,0,cube_vertices),
+           new PolyActor(this,this.shapes.cube, this.materials.red_steel,bottom_transform,1,0,0,cube_vertices),
+           new PolyActor(this,this.shapes.cube, this.materials.red_steel,diag_transform,1,0,0,cube_vertices),
+           new PolyActor(this,this.shapes.cube, this.materials.red_steel,right_barrier,1,0,0,cube_vertices),
+           new PolyActor(this,this.shapes.cube, this.materials.red_steel,left_diag,1,0,0,cube_vertices),
+           new PolyActor(this,this.shapes.cube, this.materials.red_steel,right_diag,1,0,0,cube_vertices),
            
-           new PolyActor(this,this.shapes.cube, this.materials.wall,right_flipper_side,1,0,0,cube_vertices),
-           new PolyActor(this,this.shapes.cube, this.materials.wall,left_flipper_side,1,0,0,cube_vertices),
+           new PolyActor(this,this.shapes.cube, this.materials.red_steel,right_flipper_side,1,0,0,cube_vertices),
+           new PolyActor(this,this.shapes.cube, this.materials.red_steel,left_flipper_side,1,0,0,cube_vertices),
             //new PolyActor(this,this.shapes.left_flipper, this.materials.stars,Mat4.identity(),1,0,0,flipper_vertices),
             ]
           let left_flipper=new Flipper(this,false)
@@ -861,12 +862,10 @@ export class PinballWorld extends Simulation {
 
        
 
+        // overhead light setup
+        const light_position = vec4(35, 50, 100, 0);
+        program_state.lights = [new Light(light_position, color(1, 1, 1, 1), 10**3)];
 
-
-        const sun_light_position = vec4(0,0,0,1);
-
-        const machine_color= color(.5,0,.5,1);
-        program_state.lights = [new Light(sun_light_position, color(1,1,1,1), 10**3)];
         //const t = program_state.animation_time / 1000, dt = program_state.animation_delta_time / 1000;
         let model_transform=Mat4.identity();
 
@@ -883,14 +882,39 @@ export class PinballWorld extends Simulation {
         super.display(context,program_state);
 
 
-        let score_string = this.score.toString();
-        let score_transform = model_transform.times(Mat4.translation(16, 55, 4)).times(Mat4.scale(2, 2, 2));
+        // scoreboard drawing and transformation
+        let num_string = score.toString();
+        while(num_string.length < 4) // allow 4 digits to be displayed at all times
+        {
+            num_string = "0" + num_string;
+        }
+        let score_string = "Score: " + num_string;
+        let score_transform = model_transform.times(Mat4.translation(20, 79, 30)).times(Mat4.scale(2, 2, 2)).times(Mat4.rotation(17*Math.PI/36, 1, 0, 0));
         this.shapes.text.set_string(score_string, context.context);
-        this.shapes.text.draw(context, program_state, score_transform, this.materials.text_image);
+        this.shapes.text.draw(context, program_state, score_transform, this.text_image);
 
+        let score_screen_transform = score_transform.times(Mat4.translation(8, 0, -2)).times(Mat4.scale(10, 2, 1));
+        this.shapes.cube.draw(context, program_state, score_screen_transform, this.materials.black);
 
-        let object_transform = model_transform.times(Mat4.translation(-16, 30, 4)).times(Mat4.scale(6,6,6));
-        this.shapes.machine_table.draw(context, program_state, object_transform, this.materials.stars);
+        // background drawing and transformations
+        let background_floor_transform = model_transform.times(Mat4.translation(50, 50, -50)).times(Mat4.scale(200, 100, 1)).times(Mat4.rotation(17*Math.PI/36, 1, 0, 0));
+        this.shapes.background_floor.draw(context, program_state, background_floor_transform, this.materials.wood);
+        let background_wall_transform = model_transform.times(Mat4.translation(20, 125, 20)).times(Mat4.scale(200, 1, 70));
+        this.shapes.background_wall.draw(context, program_state, background_wall_transform, this.materials.brick);
+
+        // pinball table drawing and transformations
+        let machine_table_transform = model_transform.times(Mat4.translation(35, 55, -6)).times(Mat4.scale(77, 50, 40)).times(Mat4.rotation(17*Math.PI/36, 1, 0, 0));
+        this.shapes.machine_table.draw(context, program_state, machine_table_transform, this.materials.red_steel);
+        //let machine_backboard_transform = model_transform.times(Mat4.translation(20, 49, 20)).times(Mat4.scale(26, 20, 30)).times(Mat4.rotation(17*Math.PI/36, 1, 0, 0));
+        let machine_backboard_transform = model_transform.times(Mat4.translation(35, 89, 20)).times(Mat4.scale(37, 7, 25)).times(Mat4.rotation(17*Math.PI/36, 1, 0, 0));
+        this.shapes.backboard.draw(context, program_state, machine_backboard_transform, this.materials.red_steel);
+        let machine_legs_transform = model_transform.times(Mat4.translation(35, 50, -30)).times(Mat4.scale(77, 50, 60)).times(Mat4.rotation(17*Math.PI/36, 1, 0, 0));
+        this.shapes.machine_legs.draw(context, program_state, machine_legs_transform, this.materials.red_steel);
+
+        // floor drawing and transformation
+        let floor_transform = model_transform.times(Mat4.translation(35, 40, 2)).times(Mat4.scale(35, 40, 1));
+        this.shapes.cube.draw(context, program_state, floor_transform, this.materials.red_velvet);
+
 
 
 
