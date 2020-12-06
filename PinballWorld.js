@@ -67,6 +67,10 @@ class RoundActor extends Actor
       return null;
   }
 
+  draw_corners(context,program_state)
+  {
+
+  }
 }
 
 
@@ -88,19 +92,33 @@ class PolyActor extends Actor
         this.sides_list.push([model_transform.times(full_vertices_4D[i]),model_transform.times(full_vertices_4D[i+1])]);
         i++;
     }
-   
+    
     }
-
-
+   draw_corners(context,program_state)
+   {
+       let i=0
+       while (i<this.sides_list.length)
+       {
+           let corner_transform=Mat4.identity().times(Mat4.translation(this.sides_list[i][0][0],this.sides_list[i][0][1],4)).times(Mat4.scale(.2,.2,.2));
+           this.world.shapes.cube.draw(context,program_state,corner_transform,this.world.materials.test);
+           i=i+1;
+       }
+   }
+  
   check_if_ball_inside_and_provide_vel_changes(ball,dt)
   {
       let i=0;
+
       while (i<this.sides_list.length)
       {
-          let adjustment=this.check_if_crossed_specific_side(dt,ball.center[0],ball.center[1],ball.linear_velocity[0],ball.linear_velocity[1],ball.radius,this.sides_list[i])
+          let adjustment=this.check_if_crossed_specific_side(dt,ball.center[0],ball.center[1],
+                         ball.linear_velocity[0],ball.linear_velocity[1],ball.radius,this.sides_list[i])
+
+
           if (adjustment!=null) return adjustment;
           i+=1;
       }
+
       return null;
   }
 
@@ -166,8 +184,8 @@ point_in_box(x,y,a,b,c,d) {
   {
       let ball_x=ball_center_x_pos
       let ball_y=ball_center_y_pos
-      let ball_vel_x=dt*velocity_x
-      let ball_vel_y=dt*velocity_y
+      let ball_vel_x=.1*velocity_x
+      let ball_vel_y=.1*velocity_y
  
       let ball_r=ball_radius;
       var is_vertical_path = false;
@@ -185,7 +203,7 @@ point_in_box(x,y,a,b,c,d) {
         }
 */
         // find velocity
-        var v = Math.sqrt((1/dt)*ball_vel_x * (1/dt)*ball_vel_x+(1/dt)*ball_vel_y * (1/dt)*ball_vel_y);
+        var v = Math.sqrt(100*ball_vel_x * ball_vel_x+ 100*ball_vel_y * ball_vel_y);
 
         // find theta_path, m_path, and b_path
         var theta_path = this.get_theta(ball_vel_x, ball_vel_y);
@@ -319,14 +337,96 @@ point_in_box(x,y,a,b,c,d) {
 
 class Flipper extends PolyActor
 {
-    constructor(world)
-    {
-        this.world=world;
-    }
-    doSomething(dt)
+    constructor(world,right)
     {
 
+        
+        let flipper_coords=[vec4(-1.218709683418274, 0.8929912686347961, 0.375160526148974895,1),
+        vec4(1.118709683418274, 0.5929912686347961, 0.365160526148974895,1),
+        vec4(1.118709683418274, 0.5929912686347961, 0.065160526148974895,1),
+        vec4(-1.218709683418274, 0.8929912686347961, 0.075160526148974895,1)];
+        
+        let model_transform=Mat4.identity();
+        let flip_start_mat=model_transform.times(Mat4.translation((world.board_right-7)/2,12,4))
+        let flip_adjust_mat=model_transform.times(Mat4.translation((world.board_right-7)*6/20,0,0)).times(Mat4.rotation(-Math.PI/2.5,0,0,1))
+        flip_adjust_mat=flip_adjust_mat.times(Mat4.translation(0,-(world.board_right-7)/6,0))
+        flip_adjust_mat=flip_adjust_mat.times(Mat4.rotation(3*Math.PI/2,0,0,1)).times(Mat4.rotation(Math.PI/2,1,0,0))
+        flip_adjust_mat=flip_adjust_mat.times(Mat4.scale((world.board_right-7)*1/12,(world.board_right-7)*1/12,(world.board_right-7)*1/12))
+        let refl_matrix=Matrix.of([-1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1])
+        let rest_transform=[]
+        if (right)
+        {
+            rest_transform=model_transform.times(flip_start_mat).times(flip_adjust_mat)
+        }
+        else 
+        {
+            rest_transform=model_transform.times(flip_start_mat).times(refl_matrix).times(flip_adjust_mat)
+        }
+        super(world, world.shapes.left_flipper, world.materials.stars, rest_transform, 0, 0, 1, flipper_coords )
+        this.world=world;
+        this.flipper_position=0;
+
+        this.flip_max=15;
+        this.original_mat=rest_transform;
+
+        this.flipper_coords_access=[vec4(-1.218709683418274, 0.8929912686347961, 0.375160526148974895,1),
+                                    vec4(1.118709683418274, 0.5929912686347961, 0.365160526148974895,1),
+                                    vec4(1.118709683418274, 0.5929912686347961, 0.065160526148974895,1),
+                                   vec4(-1.218709683418274, 0.8929912686347961, 0.075160526148974895,1)];
     }
+    doSomething()
+    {
+        this.rotate();
+    }
+    rotate()
+    {
+
+        let lth =  3.14159*(Math.min(this.flipper_position,10))/(this.flip_max*2);
+        let mt=Mat4.identity();
+        mt = mt.times(Mat4.rotation(-Math.sin(lth),0.,0,1));
+        mt=mt.times(Mat4.translation(-5*Math.sin(lth),4.5*Math.sin(lth),0))
+        
+        //mt = mt.times(Mat4.translation(0.,5*Math.sin(lth),0.));    
+        let new_mat=this.original_mat.times(Mat4.scale(1/((this.world.board_right-7)*1/12),1/((this.world.board_right-7)*1/12),1/((this.world.board_right-7)*1/12)))
+        new_mat=new_mat.times(Mat4.rotation(-Math.PI/2,1,0,0)).times(Mat4.rotation(-11*Math.PI/10,0,0,1)).times(mt).times(Mat4.rotation(11*Math.PI/10,0,0,1))
+        new_mat=new_mat.times(Mat4.rotation(Math.PI/2,1,0,0)).times(Mat4.scale((this.world.board_right-7)*1/12,(this.world.board_right-7)*1/12,(this.world.board_right-7)*1/12))
+       
+
+        this.emplace(new_mat,vec3(0,0,0),0);
+  
+        this.sides_list=[]
+
+        
+        let i=0
+        while (i<this.flipper_coords_access.length-1)
+    {
+        this.sides_list.push([new_mat.times(this.flipper_coords_access[i]),new_mat.times(this.flipper_coords_access[i+1])]);
+        i++;
+    }
+    }
+    
+    adjust_flipper_position(up)
+    {
+        if (up)
+        {
+            if (this.flipper_position<this.flip_max)
+            {
+               
+            this.flipper_position++;
+            }      
+        } 
+        else 
+        {
+            if (this.flipper_position>0)
+            this.flipper_position--;
+            if (this.flipper_position>0)
+            this.flipper_position--;
+        }
+    }
+
+    
+        
+
 }
 
 
@@ -424,7 +524,7 @@ export class PinballWorld extends Simulation {
         this.initial_camera_location = Mat4.look_at(vec3(15, 25, 90), vec3(15, 25, 0), vec3(0, 1, 1));
         this.camera_focus=null;
 
-
+    
 
         
         //Shape Options
@@ -457,8 +557,10 @@ export class PinballWorld extends Simulation {
 
 
 
-
-
+        
+        
+        this.left_flipper_cooldown=0;
+        this.right_flipper_cooldown=0;
         //Material Options
         this.materials = 
         {
@@ -524,8 +626,11 @@ export class PinballWorld extends Simulation {
                     texture: new Texture("assets/stars.png")
                  }
             ),
-
-
+            test: new Material(new defs.Phong_Shader(),
+            {
+            ambient:1,diffusivity:.6,color:hex_color("#0000ff")}),
+            
+            
             text_image:
             new Material
             (
@@ -535,6 +640,7 @@ export class PinballWorld extends Simulation {
                      texture: new Texture("assets/text.png")
                 }
             )
+
         };
 
 
@@ -570,7 +676,10 @@ export class PinballWorld extends Simulation {
         let top_left=vec4(-1,1,0,1);
         
         let cube_vertices= [bot_left,top_left,top_right,bot_right]
+       
+
         
+       
 
         //Machine building
         let left_transform=model_transform.times(Mat4.translation(-1,this.board_top/2,4)).times(Mat4.scale(1,this.board_top/2,4.2))
@@ -578,33 +687,61 @@ export class PinballWorld extends Simulation {
         let top_transform=model_transform.times(Mat4.translation(this.board_right/2,this.board_top+1,4)).times(Mat4.scale(this.board_right/2+2,1,4.2))
         let bottom_transform=model_transform.times(Mat4.translation(this.board_right/2,-1,4)).times(Mat4.scale(this.board_right/2+2,1,4.2))
         let right_barrier=model_transform.times(Mat4.translation(this.board_right-6,this.board_top/2-6,4)).times(Mat4.scale(1,this.board_top/2-6,4.2))
+       
+
+
         let diag_start_mat=model_transform.times(Mat4.translation((this.board_right-7)/2,12,4))
-        let diag_adjust_mat=model_transform.times(Mat4.translation((this.board_right-7)*6.7/20,0,0)).times(Mat4.rotation(-Math.PI/2.5,0,0,1)).times(Mat4.scale(2,(this.board_right-7)*1/15,1))
+        let diag_adjust_mat=model_transform.times(Mat4.translation((this.board_right-7)*6.7/20,0,0))
+        diag_adjust_mat=diag_adjust_mat.times(Mat4.rotation(-Math.PI/2.5,0,0,1)).times(Mat4.scale(2,(this.board_right-7)*1/15,1))
+        
+
+
         let left_diag=model_transform.times(diag_start_mat).times(Matrix.of([-1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1])).times(diag_adjust_mat)
         let right_diag=model_transform.times(diag_start_mat).times(diag_adjust_mat)
-        let flip_adjust_mat=model_transform.times(Mat4.translation((this.board_right-7)*6/20,0,0)).times(Mat4.rotation(-Math.PI/2.5,0,0,1)).times(Mat4.translation(0,-(this.board_right-7)/6
-        ,0))
-.times(Mat4.rotation(3*Math.PI/2,0,0,1)).times(Mat4.rotation(Math.PI/2,1,0,0)).times(Mat4.scale((this.board_right-7)*1/12,(this.board_right-7)*1/12,(this.board_right-7)*1/12))
-        let left_flip_partial_transform=model_transform.times(diag_start_mat).times(Matrix.of([-1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1])).times(flip_adjust_mat)
+
+
+
+
+        let flip_adjust_mat=model_transform.times(Mat4.translation((this.board_right-7)*6/20,0,0)).times(Mat4.rotation(-Math.PI/2.5,0,0,1))
+        flip_adjust_mat=flip_adjust_mat.times(Mat4.translation(0,-(this.board_right-7)/6,0))
+        flip_adjust_mat=flip_adjust_mat.times(Mat4.rotation(3*Math.PI/2,0,0,1)).times(Mat4.rotation(Math.PI/2,1,0,0))
+        flip_adjust_mat=flip_adjust_mat.times(Mat4.scale((this.board_right-7)*1/12,(this.board_right-7)*1/12,(this.board_right-7)*1/12))
+        
+
+        
+        let left_flip_partial_transform=model_transform.times(diag_start_mat).times(Matrix.of([-1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]))
+        left_flip_partial_transform=left_flip_partial_transform.times(flip_adjust_mat)
+
+
+
         let right_flip_partial_transform=model_transform.times(diag_start_mat).times(flip_adjust_mat)
 
 
         let right_flipper_side=model_transform.times(diag_start_mat).times(Mat4.translation((this.board_right-7)*(4.5/12),5.2,-.2)).times(Mat4.scale(2,5.5,1))
-        let left_flipper_side=model_transform.times(diag_start_mat).times(Matrix.of([-1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1])).times(Mat4.translation((this.board_right-7)*(4.5/12),5.2,-.2)).times(Mat4.scale(2,5.5,1))
+        let left_flipper_side=model_transform.times(diag_start_mat).times(Matrix.of([-1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]))
+        left_flipper_side=left_flipper_side.times(Mat4.translation((this.board_right-7)*(4.5/12),5.2,-.2)).times(Mat4.scale(2,5.5,1))
+        
+
+
+
         this.bodies=[new PolyActor(this,this.shapes.cube, this.materials.wall,left_transform,1,0,0,cube_vertices),
-            new PolyActor(this,this.shapes.cube, this.materials.wall,right_transform,1,0,0,cube_vertices),
+           new PolyActor(this,this.shapes.cube, this.materials.wall,right_transform,1,0,0,cube_vertices),
            new PolyActor(this,this.shapes.cube, this.materials.wall,top_transform,1,0,0,cube_vertices),
            new PolyActor(this,this.shapes.cube, this.materials.wall,bottom_transform,1,0,0,cube_vertices),
-            new PolyActor(this,this.shapes.cube, this.materials.wall,diag_transform,1,0,0,cube_vertices),
-            new PolyActor(this,this.shapes.cube, this.materials.wall,right_barrier,1,0,0,cube_vertices),
-            new PolyActor(this,this.shapes.cube, this.materials.wall,left_diag,1,0,0,cube_vertices),
-            new PolyActor(this,this.shapes.cube, this.materials.wall,right_diag,1,0,0,cube_vertices),
-            new PolyActor(this,this.shapes.left_flipper, this.materials.stars,left_flip_partial_transform,1,0,0,cube_vertices),
-            new PolyActor(this,this.shapes.left_flipper, this.materials.stars,right_flip_partial_transform,1,0,0,cube_vertices),
-            new PolyActor(this,this.shapes.cube, this.materials.wall,right_flipper_side,1,0,0,cube_vertices),
-            new PolyActor(this,this.shapes.cube, this.materials.wall,left_flipper_side,1,0,0,cube_vertices),
+           new PolyActor(this,this.shapes.cube, this.materials.wall,diag_transform,1,0,0,cube_vertices),
+           new PolyActor(this,this.shapes.cube, this.materials.wall,right_barrier,1,0,0,cube_vertices),
+           new PolyActor(this,this.shapes.cube, this.materials.wall,left_diag,1,0,0,cube_vertices),
+           new PolyActor(this,this.shapes.cube, this.materials.wall,right_diag,1,0,0,cube_vertices),
+           
+           new PolyActor(this,this.shapes.cube, this.materials.wall,right_flipper_side,1,0,0,cube_vertices),
+           new PolyActor(this,this.shapes.cube, this.materials.wall,left_flipper_side,1,0,0,cube_vertices),
+            //new PolyActor(this,this.shapes.left_flipper, this.materials.stars,Mat4.identity(),1,0,0,flipper_vertices),
             ]
-
+          let left_flipper=new Flipper(this,false)
+          let right_flipper=new Flipper(this, true)
+          this.bodies.push(left_flipper);
+          this.bodies.push(right_flipper)
+          this.flippers=[left_flipper,right_flipper]
           //  new PolyActor(this,this.shapes.cube, this.materials.wall,bottom_transform,1,0,0),
             
           //  new PolyActor(this,this.shapes.cube, this.materials.wall,model_transform.times(Mat4.translation(5,5,4)),1,0,0,[[4,4],[4,6],[6,6],[6,4]])
@@ -623,7 +760,7 @@ export class PinballWorld extends Simulation {
             {
                 
                 if (i%4==j%4) continue;
-                let obj_transform=Mat4.identity().times(Mat4.translation(j,i,4)).times(Mat4.scale(.5,.5,.5));
+               // let obj_transform=Mat4.identity().times(Mat4.translation(j,i,4)).times(Mat4.scale(.5,.5,.5));
       //           this.bodies.push(new PolyActor(this,this.shapes.cube, this.materials.pinball,obj_transform,1,0,0,[[j-.5,i-.5],[j-.5,i+.5],[j+.5,i+.5],[j+.5,i-.5]]))
 
             }
@@ -677,6 +814,8 @@ export class PinballWorld extends Simulation {
         this.new_line();
         this.key_triggered_button("Pull spring back more", ["Control", "1"], () => this.launch_speed=Math.min(10,this.launch_speed+1));
         this.key_triggered_button("Pull spring back less", ["Control", "2"], () => this.launch_speed=Math.max(0,this.launch_speed-1));
+        this.key_triggered_button("Left Flipper", ["l"], ()=>this.left_flipper_cooldown=12);
+        this.key_triggered_button("Right Flipper", [";"], ()=>this.right_flipper_cooldown=12);
         this.new_line();
         this.key_triggered_button("Launch Pinball", ["Control", "3"], () => {this.launch_ball()});
         this.key_triggered_button("Switch camera", ["Control", "4"], () => this.ball_focus=!this.ball_focus);
@@ -733,11 +872,14 @@ export class PinballWorld extends Simulation {
 
 
         let below_transform=model_transform.times(Mat4.translation(this.board_right/2,this.board_top/2,1)).times(Mat4.scale(this.board_right/2+1,this.board_top/2+1,1))
-        this.shapes.cube.draw(context, program_state, below_transform, this.materials.floor);
+       // this.shapes.cube.draw(context, program_state, below_transform, this.materials.floor);
 
 
-        if (this.ball_focus && this.camera_focus!=null) program_state.set_camera(Mat4.inverse(this.camera_focus.drawn_location.times(Mat4.translation(0,0,20))));
+        if (this.ball_focus && this.camera_focus!=null) 
+        program_state.set_camera(Mat4.inverse(this.camera_focus.drawn_location.times(Mat4.translation(0,0,20))));
         else program_state.set_camera(this.initial_camera_location);
+
+
         super.display(context,program_state);
 
 
@@ -752,7 +894,12 @@ export class PinballWorld extends Simulation {
 
 
 
-
+        let i=0
+        while (i<this.bodies.length)
+        {
+           this.bodies[i].draw_corners(context,program_state)      
+           i++;
+        }
 
     }
 
@@ -760,6 +907,7 @@ export class PinballWorld extends Simulation {
 
     update_state(dt)
     {
+
 
         if (this.ball_currently_in_launcher==null && ((this.balls_remaining>0&&this.active_balls==0) || this.multiball_mode))
         {
@@ -785,9 +933,12 @@ export class PinballWorld extends Simulation {
          
 
         }
-
-        //We set the light at the o
-
+        
+        this.flippers[0].adjust_flipper_position((this.left_flipper_cooldown!=0));
+        this.flippers[1].adjust_flipper_position((this.right_flipper_cooldown!=0));
+        
+        if (this.left_flipper_cooldown>0) this.left_flipper_cooldown--;
+        if (this.right_flipper_cooldown>0) this.right_flipper_cooldown--;
     }
 }
 
