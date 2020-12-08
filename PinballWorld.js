@@ -9,7 +9,7 @@ const {
 const {Cube, Textured_Phong} = defs
 
 
-let score = 0;
+
 var bounce_sound, launch_sound, lost_ball_sound, flipper_sound_left, flipper_sound_right, game_over_sound;
 
 
@@ -95,6 +95,7 @@ class PolyActor extends Actor
     }
     
     }
+    react_to_hit(){}
    draw_corners(context,program_state)
    {
        let i=0
@@ -118,6 +119,7 @@ class PolyActor extends Actor
 
           if (adjustment!=null)
           {
+            this.react_to_hit();
             return adjustment;
           } 
           
@@ -431,6 +433,45 @@ class Flipper extends PolyActor
 
 }
 
+class MultiballBonus extends PolyActor
+{
+    constructor(world,model_transform,coords4D)
+    {
+        super(world, world.shapes.cube, world.materials.rusty_metal, model_transform, 1, 0, 0, coords4D )
+        
+    }
+    react_to_hit()
+    {
+        if (this.world.multiball_cooldown==0)
+        this.world.multiball_cooldown=200;
+    }
+}
+
+class Moving_Obstacle extends PolyActor
+{
+    constructor()
+    {
+
+    }      
+}
+
+class Hit_All_Three extends PolyActor
+{
+    constructor(world,model_transform,coords4D)
+    {
+        super(world, world.shapes.cube, world.materials.rusty_metal, model_transform, 1, 0, 0, coords4D )
+        this.has_been_hit=false
+    }
+    react_to_hit()
+    {
+        if (this.has_been_hit==false)
+        {
+            this.material=this.world.materials.black.override(color(0,1,1,1));
+        this.world.hit_all_three_count++;
+        this.has_been_hit=true;
+        }
+    }
+}
 
 
 class Pinball extends RoundActor
@@ -569,7 +610,7 @@ export class PinballWorld extends Simulation {
 //         const texture = new defs.Textured_Phong(1);
 
 
-
+        this.hit_all_three_count=0;
         
         
         this.left_flipper_cooldown=0;
@@ -660,7 +701,7 @@ export class PinballWorld extends Simulation {
 
         //Initial Game Settings
       
-        this.multiball_mode=true;
+        this.multiball_cooldown=0;
         this.balls_remaining=0;
         this.active_balls=0;
 
@@ -734,7 +775,9 @@ export class PinballWorld extends Simulation {
         let left_flipper_side=model_transform.times(diag_start_mat).times(Matrix.of([-1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]))
         left_flipper_side=left_flipper_side.times(Mat4.translation((this.board_right-7)*(4.5/12),5.2,-.2)).times(Mat4.scale(2,5.5,1))
         
-
+        let first_hit_all_three_transform=model_transform.times(Mat4.translation(12,30,4))
+        let second_hit_all_three_transform=model_transform.times(Mat4.translation(12,40,4))
+        let third_hit_all_three_transform=model_transform.times(Mat4.translation(12,50,4))
 
 
         this.bodies=[new PolyActor(this,this.shapes.cube, this.materials.red_steel,left_transform,1,bounce_sound,0,cube_vertices),
@@ -749,7 +792,13 @@ export class PinballWorld extends Simulation {
            new PolyActor(this,this.shapes.cube, this.materials.red_steel,right_flipper_side,1,bounce_sound,0,cube_vertices),
            new PolyActor(this,this.shapes.cube, this.materials.red_steel,left_flipper_side,1,bounce_sound,0,cube_vertices),
             //new PolyActor(this,this.shapes.left_flipper, this.materials.stars,Mat4.identity(),1,0,0,flipper_vertices),
+           new MultiballBonus(this,Mat4.identity().times(Mat4.translation(30,50,4)),cube_vertices)
+            
+
             ]
+          let first_of_three=new Hit_All_Three(this, first_hit_all_three_transform,cube_vertices)
+          let second_of_three=new Hit_All_Three(this, second_hit_all_three_transform,cube_vertices)
+          let third_of_three= new Hit_All_Three(this, third_hit_all_three_transform,cube_vertices)
           let left_flipper=new Flipper(this,false)
           let right_flipper=new Flipper(this, true)
           this.bodies.push(left_flipper);
@@ -764,7 +813,10 @@ export class PinballWorld extends Simulation {
 
           let test_mushroom = new PolyActor(this, this.shapes.mushroom, this.materials.rusty_metal, test_transform, 1, bounce_sound, 25, cube_vertices);
           this.bodies.push(test_mushroom);
-
+          this.trio=[first_of_three,second_of_three,third_of_three]
+          this.bodies.push(first_of_three);
+          this.bodies.push(second_of_three);
+          this.bodies.push(third_of_three);
        
  
         //Obstacle Building
@@ -801,7 +853,7 @@ export class PinballWorld extends Simulation {
                 let vel_adjustments=this.bodies[i].check_if_ball_inside_and_provide_vel_changes(ball,dt);
                 if (vel_adjustments!= null)
                 {
-                    score += this.bodies[i].object_score_value; // update score. i think this is where collisions are detected
+                    this.score += this.bodies[i].object_score_value; // update score. i think this is where collisions are detected
                     if(this.bodies[i].sound_effect != 0)
                     {
                         this.bodies[i].sound_effect.play();
@@ -845,12 +897,14 @@ export class PinballWorld extends Simulation {
         this.key_triggered_button("Pull spring back more", ["Control", "1"], () => this.launch_speed=Math.min(10,this.launch_speed+1));
         this.key_triggered_button("Pull spring back less", ["Control", "2"], () => this.launch_speed=Math.max(0,this.launch_speed-1));
         this.key_triggered_button("Left Flipper", ["l"], () => {
+            if (this.left_flipper_cooldown==0)flipper_sound_left.play();
             this.left_flipper_cooldown=12;
-            flipper_sound_left.play();
+            
         });
         this.key_triggered_button("Right Flipper", [";"], () => {
+            if (this.right_flipper_cooldown==0)flipper_sound_right.play();
             this.right_flipper_cooldown=12;
-            flipper_sound_right.play();
+            
         });
         this.new_line();
         this.key_triggered_button("Launch Pinball", ["Control", "3"], () => {this.launch_ball()});
@@ -867,7 +921,7 @@ export class PinballWorld extends Simulation {
         launch_sound.play();
         this.ball_currently_in_launcher.get_launched();
         this.ball_currently_in_launcher=null;
-        //if (!this.multiball_mode)
+        if (this.multiball_cooldown==0)
         this.balls_remaining -= 1;
         this.active_balls += 1;
         console.log(this.balls_remaining);
@@ -924,7 +978,7 @@ export class PinballWorld extends Simulation {
 
 
         // scoreboard drawing and transformation
-        let num_string = score.toString();
+        let num_string = this.score.toString();
         while(num_string.length < 4) // allow 4 digits to be displayed at all times
         {
             num_string = "0" + num_string;
@@ -997,7 +1051,7 @@ export class PinballWorld extends Simulation {
     {
 
 
-        if (this.ball_currently_in_launcher==null && ((this.balls_remaining>0&&this.active_balls==0) || this.multiball_mode))
+        if (this.ball_currently_in_launcher==null && ((this.balls_remaining>0&&this.active_balls==0) || this.multiball_cooldown>0))
         {
             this.place_ball_in_launcher();
         }
@@ -1031,6 +1085,24 @@ export class PinballWorld extends Simulation {
         
         if (this.left_flipper_cooldown>0) this.left_flipper_cooldown--;
         if (this.right_flipper_cooldown>0) this.right_flipper_cooldown--;
+
+        if (this.hit_all_three_count==3)
+        {
+            this.score+=1000
+            
+            this.hit_all_three_count=0;
+            this.trio[0].has_been_hit=false;
+            this.trio[0].material=this.materials.black
+            this.trio[1].has_been_hit=false;
+            this.trio[1].material=this.materials.black
+            this.trio[2].has_been_hit=false;
+            this.trio[2].material=this.materials.black
+
+        }
+        if (this.multiball_cooldown>0)
+        {
+            this.multiball_cooldown--;
+        }
     }
 }
 

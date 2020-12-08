@@ -3,6 +3,7 @@ import {defs, tiny} from './common.js';
 // Pull these names into this module's scope for convenience:
 const {vec3, unsafe3, vec4, color, Mat4, Light, Shape, Material, Shader, Texture, Scene} = tiny;
 
+
 export class Body {
     // **Body** can store and update the properties of a 3D body that incrementally
     // moves from its previous place due to velocities.  It conforms to the
