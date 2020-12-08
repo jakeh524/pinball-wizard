@@ -631,6 +631,12 @@ export class PinballWorld extends Simulation {
                 ambient: 0.7, diffusivity: 0.8, specularity: 0.1,
                 texture: new Texture("assets/red_velvet.jpg")}),
 
+            pinball_wizard: new Material(new Textured_Phong(), {
+                color: hex_color("#000000"),
+                ambient: 0.7, diffusivity: 0.8, specularity: 0.1,
+                texture: new Texture("assets/pinball_wizard.jpg")}),
+
+
                 
         }
 
@@ -647,6 +653,8 @@ export class PinballWorld extends Simulation {
         flipper_sound_left = new Audio("assets/flip.mp3");
         flipper_sound_right = new Audio("assets/flip.mp3");
         game_over_sound = new Audio("assets/game_over_sound.mp3");
+
+        this.has_sound_played_flag = false; //used to make sure game over sound doesn't repeat because it is inside display function
 
 
 
@@ -817,6 +825,7 @@ export class PinballWorld extends Simulation {
     {
         this.start_game_flag = true;
         this.balls_remaining = 5;
+        this.has_sound_played_flag = false;
         this.place_ball_in_launcher();
     }
 
@@ -956,12 +965,17 @@ export class PinballWorld extends Simulation {
            this.bodies[i].draw_corners(context,program_state)      
            i++;
         }
-
+        
+        
         if(this.balls_remaining == 0 && this.active_balls == 0 && this.start_game_flag == true) // out of balls and our last one just died
         {
             // GAME OVER message and sound
-            game_over_sound.play();
-            
+            if(this.has_sound_played_flag == false)
+            {
+                game_over_sound.play();
+                this.has_sound_played_flag = true;
+            }
+
             let game_over_string = "GAME OVER";
             let game_over_transform = model_transform.times(Mat4.translation(0, 40, 30)).times(Mat4.scale(6, 6, 6)).times(Mat4.rotation(Math.PI/2, 1, 0, 0));
             this.shapes.text.set_string(game_over_string, context.context);
