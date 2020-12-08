@@ -10,7 +10,7 @@ const {Cube, Textured_Phong} = defs
 
 
 let score = 0;
-var bounce_sound, launch_sound, lost_ball_sound;
+var bounce_sound, launch_sound, lost_ball_sound, flipper_sound_left, flipper_sound_right, game_over_sound;
 
 
 
@@ -116,7 +116,11 @@ class PolyActor extends Actor
                          ball.linear_velocity[0],ball.linear_velocity[1],ball.radius,this.sides_list[i])
 
 
-          if (adjustment!=null) return adjustment;
+          if (adjustment!=null)
+          {
+            return adjustment;
+          } 
+          
           i+=1;
       }
 
@@ -240,8 +244,8 @@ point_in_box(x,y,a,b,c,d) {
                 theta_wall = -3.14159/2;
                 collision_x = side[0][0];
                 collision_y = side[0][1];
-                console.log("point wall collides " + collision_x +
-                    "," + collision_y );
+                //console.log("point wall collides " + collision_x +
+                //    "," + collision_y );
             }
         }
         else {
@@ -254,7 +258,7 @@ point_in_box(x,y,a,b,c,d) {
             // x = (b1-b2)/(m2-m1)
 
             if(m_path == m_wall) {
-                console.log("No collision, wall and path are parallel.");
+                //console.log("No collision, wall and path are parallel.");
                 return false; // avoid errors
             }
             collision_x = (b_path - b_wall)/(-m_path + m_wall);
@@ -280,7 +284,7 @@ point_in_box(x,y,a,b,c,d) {
       //          console.log("The collision point is not on the line segement.");
                 return;
             }
-            else console.log("The collision point IS on the line segement.");
+            //else console.log("The collision point IS on the line segement.");
 
             // find the bounce direction
             //    IS THIS CORRECT?
@@ -308,7 +312,7 @@ point_in_box(x,y,a,b,c,d) {
             let test3 = test1*test2;
 
             if(test3>0){
-                console.log("The travel path does not cross the wall so no bounce.");
+                //console.log("The travel path does not cross the wall so no bounce.");
                 return null;
             }
 
@@ -363,7 +367,7 @@ class Flipper extends PolyActor
         {
             rest_transform=model_transform.times(flip_start_mat).times(refl_matrix).times(flip_adjust_mat)
         }
-        super(world, world.shapes.left_flipper, world.materials.rusty_metal, rest_transform, 0, 0, 1, flipper_coords )
+        super(world, world.shapes.left_flipper, world.materials.rusty_metal, rest_transform, 1, 0, 0, flipper_coords )
         this.world=world;
         this.flipper_position=0;
 
@@ -425,9 +429,6 @@ class Flipper extends PolyActor
         }
     }
 
-    
-        
-
 }
 
 
@@ -460,7 +461,6 @@ class Pinball extends RoundActor
         {
             this.die();
            
-            
         }
         }
         
@@ -473,11 +473,11 @@ class Pinball extends RoundActor
 
     die()
     {
-
-         super.die();
          if (this.world.camera_focus==this)
-                this.world.camera_focus=null;
+            this.world.camera_focus=null;
          this.world.active_balls-=1;
+         super.die();
+
     }
 
 
@@ -512,7 +512,6 @@ class Pinball extends RoundActor
 
 
 
-
 export class PinballWorld extends Simulation {
     
 
@@ -526,6 +525,7 @@ export class PinballWorld extends Simulation {
         this.initial_camera_location = Mat4.look_at(vec3(35, -55, 90), vec3(35, 45, 0), vec3(0, 1, 1));
         //this.initial_camera_location = Mat4.look_at(vec3(15, 25, 90), vec3(15, 25, 0), vec3(0, 1, 1));
         this.camera_focus=null;
+        this.start_game_flag == false;
 
     
 
@@ -539,6 +539,7 @@ export class PinballWorld extends Simulation {
             circle: new defs.Regular_2D_Polygon(1, 15),
             cylinder: new defs.Capped_Cylinder(10,10,[0,150]),
             text: new Text_Line(15),
+            text_long: new Text_Line(35),
             machine_table: new Shape_From_File("assets/machine-table.obj"),
             machine_legs: new Shape_From_File("assets/machine-legs.obj"),
             machine_backboard: new Shape_From_File("assets/machine-backboard.obj"),
@@ -643,6 +644,9 @@ export class PinballWorld extends Simulation {
         bounce_sound = new Audio("assets/pinball_bounce.mp3");
         launch_sound = new Audio("assets/firing_ball.mp3");
         lost_ball_sound = new Audio("assets/lost_ball.mp3");
+        flipper_sound_left = new Audio("assets/flip.mp3");
+        flipper_sound_right = new Audio("assets/flip.mp3");
+        game_over_sound = new Audio("assets/game_over_sound.mp3");
 
 
 
@@ -725,17 +729,17 @@ export class PinballWorld extends Simulation {
 
 
 
-        this.bodies=[new PolyActor(this,this.shapes.cube, this.materials.red_steel,left_transform,1,0,0,cube_vertices),
-           new PolyActor(this,this.shapes.cube, this.materials.red_steel,right_transform,1,0,0,cube_vertices),
-           new PolyActor(this,this.shapes.cube, this.materials.red_steel,top_transform,1,0,0,cube_vertices),
-           new PolyActor(this,this.shapes.cube, this.materials.red_steel,bottom_transform,1,0,0,cube_vertices),
-           new PolyActor(this,this.shapes.cube, this.materials.red_steel,diag_transform,1,0,0,cube_vertices),
-           new PolyActor(this,this.shapes.cube, this.materials.red_steel,right_barrier,1,0,0,cube_vertices),
-           new PolyActor(this,this.shapes.cube, this.materials.red_steel,left_diag,1,0,0,cube_vertices),
-           new PolyActor(this,this.shapes.cube, this.materials.red_steel,right_diag,1,0,0,cube_vertices),
+        this.bodies=[new PolyActor(this,this.shapes.cube, this.materials.red_steel,left_transform,1,bounce_sound,0,cube_vertices),
+           new PolyActor(this,this.shapes.cube, this.materials.red_steel,right_transform,1,bounce_sound,0,cube_vertices),
+           new PolyActor(this,this.shapes.cube, this.materials.red_steel,top_transform,1,bounce_sound,0,cube_vertices),
+           new PolyActor(this,this.shapes.cube, this.materials.red_steel,bottom_transform,1,bounce_sound,0,cube_vertices),
+           new PolyActor(this,this.shapes.cube, this.materials.red_steel,diag_transform,1,bounce_sound,0,cube_vertices),
+           new PolyActor(this,this.shapes.cube, this.materials.red_steel,right_barrier,1,bounce_sound,0,cube_vertices),
+           new PolyActor(this,this.shapes.cube, this.materials.red_steel,left_diag,1,bounce_sound,0,cube_vertices),
+           new PolyActor(this,this.shapes.cube, this.materials.red_steel,right_diag,1,bounce_sound,0,cube_vertices),
            
-           new PolyActor(this,this.shapes.cube, this.materials.red_steel,right_flipper_side,1,0,0,cube_vertices),
-           new PolyActor(this,this.shapes.cube, this.materials.red_steel,left_flipper_side,1,0,0,cube_vertices),
+           new PolyActor(this,this.shapes.cube, this.materials.red_steel,right_flipper_side,1,bounce_sound,0,cube_vertices),
+           new PolyActor(this,this.shapes.cube, this.materials.red_steel,left_flipper_side,1,bounce_sound,0,cube_vertices),
             //new PolyActor(this,this.shapes.left_flipper, this.materials.stars,Mat4.identity(),1,0,0,flipper_vertices),
             ]
           let left_flipper=new Flipper(this,false)
@@ -746,8 +750,12 @@ export class PinballWorld extends Simulation {
           //  new PolyActor(this,this.shapes.cube, this.materials.wall,bottom_transform,1,0,0),
             
           //  new PolyActor(this,this.shapes.cube, this.materials.wall,model_transform.times(Mat4.translation(5,5,4)),1,0,0,[[4,4],[4,6],[6,6],[6,4]])
-            
+          let test_transform = model_transform.times(Mat4.translation(20, 20, 4));
+          //let test_mushroom = new Mushroom(this, test_transform, [[19,19], [19,21], [21,21], [21,19]]);
+          
 
+          let test_mushroom = new PolyActor(this, this.shapes.mushroom, this.materials.rusty_metal, test_transform, 1, bounce_sound, 25, cube_vertices);
+          this.bodies.push(test_mushroom);
 
        
  
@@ -784,7 +792,17 @@ export class PinballWorld extends Simulation {
             {
                 let vel_adjustments=this.bodies[i].check_if_ball_inside_and_provide_vel_changes(ball,dt);
                 if (vel_adjustments!= null)
-                return vel_adjustments;
+                {
+                    score += this.bodies[i].object_score_value; // update score. i think this is where collisions are detected
+                    if(this.bodies[i].sound_effect != 0)
+                    {
+                        this.bodies[i].sound_effect.play();
+                    }
+                    
+                    return vel_adjustments;
+                    
+                }
+                
             }
 
                 
@@ -797,14 +815,16 @@ export class PinballWorld extends Simulation {
 
     start_game()
     {
-        this.balls_remaining=5;
+        this.start_game_flag = true;
+        this.balls_remaining = 5;
         this.place_ball_in_launcher();
     }
 
-    end_game()
+    end_game(program_state)
     {
-        //some kind of print to log
-        this.score=0;
+        console.log("GAME OVER");
+        //let game_over_camera_location = this.model_transform.times(Mat4.translation(500, 0, 0));
+        
 
     }
 
@@ -815,8 +835,14 @@ export class PinballWorld extends Simulation {
         this.new_line();
         this.key_triggered_button("Pull spring back more", ["Control", "1"], () => this.launch_speed=Math.min(10,this.launch_speed+1));
         this.key_triggered_button("Pull spring back less", ["Control", "2"], () => this.launch_speed=Math.max(0,this.launch_speed-1));
-        this.key_triggered_button("Left Flipper", ["l"], ()=>this.left_flipper_cooldown=12);
-        this.key_triggered_button("Right Flipper", [";"], ()=>this.right_flipper_cooldown=12);
+        this.key_triggered_button("Left Flipper", ["l"], () => {
+            this.left_flipper_cooldown=12;
+            flipper_sound_left.play();
+        });
+        this.key_triggered_button("Right Flipper", [";"], () => {
+            this.right_flipper_cooldown=12;
+            flipper_sound_right.play();
+        });
         this.new_line();
         this.key_triggered_button("Launch Pinball", ["Control", "3"], () => {this.launch_ball()});
         this.key_triggered_button("Switch camera", ["Control", "4"], () => this.ball_focus=!this.ball_focus);
@@ -829,17 +855,23 @@ export class PinballWorld extends Simulation {
     {
         if (this.ball_currently_in_launcher!=null)
         {
+        launch_sound.play();
         this.ball_currently_in_launcher.get_launched();
         this.ball_currently_in_launcher=null;
-        if (!this.multiball_mode)
-        this.balls_remaining-=1;
-        this.active_balls+=1;
+        //if (!this.multiball_mode)
+        this.balls_remaining -= 1;
+        this.active_balls += 1;
+        console.log(this.balls_remaining);
+        console.log(this.active_balls);
         }
     }
 
 
     place_ball_in_launcher()
-    {   
+    {   if(this.balls_remaining == 0)
+        {
+            return;
+        }
         let new_pinball=new Pinball(this, this.board_right);
         this.bodies.push(new_pinball);
         this.ball_currently_in_launcher=new_pinball;
@@ -925,6 +957,24 @@ export class PinballWorld extends Simulation {
            i++;
         }
 
+        if(this.balls_remaining == 0 && this.active_balls == 0 && this.start_game_flag == true) // out of balls and our last one just died
+        {
+            // GAME OVER message and sound
+            game_over_sound.play();
+            
+            let game_over_string = "GAME OVER";
+            let game_over_transform = model_transform.times(Mat4.translation(0, 40, 30)).times(Mat4.scale(6, 6, 6)).times(Mat4.rotation(Math.PI/2, 1, 0, 0));
+            this.shapes.text.set_string(game_over_string, context.context);
+            this.shapes.text.draw(context, program_state, game_over_transform, this.text_image);
+
+            let game_over_string2 = "Press 'Start Game' to Play Again";
+            let game_over_transform2 = model_transform.times(Mat4.translation(-34, 40, 20)).times(Mat4.scale(3, 3, 3)).times(Mat4.rotation(Math.PI/2, 1, 0, 0));
+            this.shapes.text_long.set_string(game_over_string2, context.context);
+            this.shapes.text_long.draw(context, program_state, game_over_transform2, this.text_image);
+        }
+
+
+
     }
 
 
@@ -935,10 +985,10 @@ export class PinballWorld extends Simulation {
 
         if (this.ball_currently_in_launcher==null && ((this.balls_remaining>0&&this.active_balls==0) || this.multiball_mode))
         {
-        this.place_ball_in_launcher();
-
-        
+            this.place_ball_in_launcher();
         }
+
+
         var i;
         for  (i=0; i<this.bodies.length;i++)
         {
@@ -953,7 +1003,11 @@ export class PinballWorld extends Simulation {
         for  (i=0; i<this.bodies.length;i++)
         {
             if (this.bodies[i].alive==false)
+            {
                 this.bodies.splice(i,1);
+                lost_ball_sound.play();
+            }
+                
          
 
         }
