@@ -6,11 +6,11 @@ const {
     Vector, Vector3, vec, vec3, vec4, color, hex_color, Shader, Matrix, Mat4, Light, Shape, Material, Scene, Texture
 } = tiny;
 
-const {Cube, Square, Textured_Phong} = defs
+const {Cube, Square, Axis_Arrows, Textured_Phong} = defs
 
 
 let score = 0;
-var bounce_sound, launch_sound, lost_ball_sound, flipper_sound_left, flipper_sound_right, game_over_sound, start_game_sound;
+var bounce_sound, launch_sound, lost_ball_sound, flipper_sound_left, flipper_sound_right, game_over_sound, start_game_sound, spring_pull_up_sound, spring_pull_down_sound, insert_quarter_sound;
 
 
 
@@ -367,7 +367,7 @@ class Flipper extends PolyActor
         {
             rest_transform=model_transform.times(flip_start_mat).times(refl_matrix).times(flip_adjust_mat)
         }
-        super(world, world.shapes.left_flipper, world.materials.rusty_metal, rest_transform, 1, 0, 0, flipper_coords )
+        super(world, world.shapes.left_flipper, world.materials.rusty_metal, rest_transform, 1, bounce_sound, 0, flipper_coords )
         this.world=world;
         this.flipper_position=0;
 
@@ -490,7 +490,7 @@ class Pinball extends RoundActor
 
     get_launched()
     {
-        this.change_velocities(0,6*this.world.launch_speed+Math.random(0,1))
+        this.change_velocities(0,8*(1+this.world.launch_speed)+Math.random(0,1))
         this.launched=true;
         this.world.camera_focus=this;
     }
@@ -539,8 +539,10 @@ export class PinballWorld extends Simulation {
             cube: new defs.Cube(),
             circle: new defs.Regular_2D_Polygon(1, 15),
             cylinder: new defs.Capped_Cylinder(10,10,[0,150]),
+            arrows: new defs.Axis_Arrows(),
             text: new Text_Line(15),
             text_long: new Text_Line(35),
+            text_longer: new Text_Line(55),
             machine_table: new Shape_From_File("assets/machine-table.obj"),
             machine_legs: new Shape_From_File("assets/machine-legs.obj"),
             machine_backboard: new Shape_From_File("assets/machine-backboard.obj"),
@@ -675,10 +677,13 @@ export class PinballWorld extends Simulation {
         flipper_sound_left = new Audio("assets/flip.mp3");
         flipper_sound_right = new Audio("assets/flip.mp3");
         game_over_sound = new Audio("assets/game_over_sound.mp3");
-        start_game_sound = new Audio("assets/start_game_sound.mp3");
+        start_game_sound = new Audio("assets/insert_quarter_start_game_sound.mp3");
+        spring_pull_up_sound = new Audio("assets/spring_pull_up_sound.mp3");
+        spring_pull_down_sound = new Audio("assets/spring_pull_down_sound.mp3");
+        insert_quarter_sound = new Audio("assets/insert_quarter_sound.mp3");
 
         this.has_sound_played_flag = false; //used to make sure game over sound doesn't repeat because it is inside display function
-
+        this.show_start_screen_flag = true; // show starting text the first time you play
 
 
         //Initial Game Settings
@@ -786,7 +791,7 @@ export class PinballWorld extends Simulation {
           
 
         //Obstacle Building
-
+        //let test_verticies = cube_vertices[0] = 
         let test_transform = model_transform.times(Mat4.translation(20, 20, 4)).times(Mat4.rotation(Math.PI/2, 1, 0, 0));
         let test_mushroom = new PolyActor(this, this.shapes.mushroom, this.materials.rusty_metal, test_transform, 1, bounce_sound, 25, cube_vertices);
         let test_transform2 = model_transform.times(Mat4.translation(25, 20, 4)).times(Mat4.rotation(Math.PI/2, 1, 0, 0));
@@ -862,24 +867,35 @@ export class PinballWorld extends Simulation {
 
     make_control_panel(context,program_state) {
         // Draw the scene's buttons, setup their actions and keyboard shortcuts, and monitor live measurements.
-        this.key_triggered_button("Start Game", ["Control", "0"], () => {
+        this.key_triggered_button("Start Game", ["v"], () => {
             start_game_sound.play();
+            this.show_start_screen_flag = false; // don't show start screen again
             this.start_game()
         });
         this.new_line();
-        this.key_triggered_button("Pull spring back more", ["Control", "1"], () => this.launch_speed=Math.min(10,this.launch_speed+1));
-        this.key_triggered_button("Pull spring back less", ["Control", "2"], () => this.launch_speed=Math.max(0,this.launch_speed-1));
-        this.key_triggered_button("Left Flipper", ["l"], () => {
+        this.key_triggered_button("Pull spring back more", ["t"], () => {
+            spring_pull_up_sound.pause(); // pause and reset so you can click button rapidly
+            spring_pull_up_sound.currentTime = 0;
+            spring_pull_up_sound.play();
+            this.launch_speed=Math.min(10,this.launch_speed+1);
+        });
+        this.key_triggered_button("Pull spring back less", ["y"], () => {
+            spring_pull_down_sound.pause(); // pause and reset so you can click button rapidly
+            spring_pull_down_sound.currentTime = 0;
+            spring_pull_down_sound.play();
+            this.launch_speed=Math.max(0,this.launch_speed-1);
+        });
+        this.key_triggered_button("Left Flipper", ["n"], () => {
             this.left_flipper_cooldown=12;
             flipper_sound_left.play();
         });
-        this.key_triggered_button("Right Flipper", [";"], () => {
+        this.key_triggered_button("Right Flipper", ["m"], () => {
             this.right_flipper_cooldown=12;
             flipper_sound_right.play();
         });
         this.new_line();
-        this.key_triggered_button("Launch Pinball", ["Control", "3"], () => {this.launch_ball()});
-        this.key_triggered_button("Switch camera", ["Control", "4"], () => this.ball_focus=!this.ball_focus);
+        this.key_triggered_button("Launch Pinball", ["Enter"], () => {this.launch_ball()});
+        this.key_triggered_button("Switch camera", ["c"], () => this.ball_focus = !this.ball_focus);
         //this.new_line();
 
     }
@@ -896,6 +912,7 @@ export class PinballWorld extends Simulation {
         this.balls_remaining -= 1;
         this.active_balls += 1;
         }
+        this.launch_speed = 0; // game design? maybe we don't want to reset speed after launch but its more realistic
     }
 
 
@@ -940,6 +957,30 @@ export class PinballWorld extends Simulation {
 
 
         super.display(context,program_state);
+
+        // start screen text
+        if(this.show_start_screen_flag == true)
+        {
+            let start_screen_string = "Welcome to Pinball Wizard";
+            let start_screen_transform = model_transform.times(Mat4.translation(-35, 40, 30)).times(Mat4.scale(4, 4, 4)).times(Mat4.rotation(Math.PI/2, 1, 0, 0));
+            this.shapes.text_long.set_string(start_screen_string, context.context);
+            this.shapes.text_long.draw(context, program_state, start_screen_transform, this.text_image);
+
+            let start_screen_string2 = "Press 'Start Game' to Insert a Quarter and Play";
+            let start_screen_transform2 = model_transform.times(Mat4.translation(-32, 40, 20)).times(Mat4.scale(2, 2, 2)).times(Mat4.rotation(Math.PI/2, 1, 0, 0));
+            this.shapes.text_longer.set_string(start_screen_string2, context.context);
+            this.shapes.text_longer.draw(context, program_state, start_screen_transform2, this.text_image);
+        }
+        
+
+        // loading spring handler
+        let spring_base_transform = model_transform.times(Mat4.translation(68, -2.5, 4)).times(Mat4.scale(2, 1, 2)).times(Mat4.rotation(Math.PI/2, 1, 0, 0));
+        for(var j = 0; j < this.launch_speed; j++)
+        {
+            this.shapes.cylinder.draw(context, program_state, spring_base_transform, this.materials.rusty_metal2);
+            spring_base_transform = spring_base_transform.times(Mat4.translation(0, 0, 1));
+
+        }
 
 
         // scoreboard drawing and transformation
