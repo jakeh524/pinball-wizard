@@ -6,11 +6,12 @@ const {
     Vector, Vector3, vec, vec3, vec4, color, hex_color, Shader, Matrix, Mat4, Light, Shape, Material, Scene, Texture
 } = tiny;
 
-const {Cube, Textured_Phong} = defs
+const {Cube, Square, Triangle, Textured_Phong} = defs
 
 
+let score = 0;
+var bounce_sound, mushroom_bounce_sound, bouncer_sound, three_ball_sound, launch_sound, lost_ball_sound, flipper_sound_left, flipper_sound_right, game_over_sound, start_game_sound, spring_pull_up_sound, spring_pull_down_sound, insert_quarter_sound, change_camera_sound, score_sound, who_riff_1, who_riff_2;
 
-var bounce_sound, launch_sound, lost_ball_sound, flipper_sound_left, flipper_sound_right, game_over_sound;
 
 
 
@@ -31,7 +32,7 @@ class Actor extends Body
     react_to_hit()
     {
         // playSound(sound_effect);
-         this.world.score+=object_score_value;
+         score+=object_score_value;
     }
 
     doSomething(dt)
@@ -500,8 +501,8 @@ point_in_box(x,y,a,b,c,d) {
             var theta_bounce = 2*theta_wall - theta_path;
 
             // find the new velocities and position
-            let anuvx = v * Math.cos(theta_bounce);
-            let anuvy = v * Math.sin(theta_bounce);
+            let anuvx = v * Math.cos(theta_bounce) * this.springiness; // CHANGES MADE HERE
+            let anuvy = v * Math.sin(theta_bounce) * this.springiness;
             let anux = ball_x + anuvx;
             let anuy = ball_y + anuvy;
 
@@ -576,7 +577,7 @@ class Flipper extends PolyActor
         {
             rest_transform=model_transform.times(flip_start_mat).times(refl_matrix).times(flip_adjust_mat)
         }
-        super(world, world.shapes.left_flipper, world.materials.rusty_metal, rest_transform, 1, 0, 0, flipper_coords )
+        super(world, world.shapes.left_flipper, world.materials.rusty_metal, rest_transform, 1, bounce_sound, 0, flipper_coords )
         this.world=world;
         this.flipper_position=0;
 
@@ -644,13 +645,22 @@ class MultiballBonus extends PolyActor
 {
     constructor(world,model_transform,coords4D)
     {
-        super(world, world.shapes.cube, world.materials.rusty_metal, model_transform, 1, 0, 0, coords4D )
-        
+        super(world, world.shapes.diamond, world.materials.glow_yellow, model_transform, 1, who_riff_1, 250, coords4D )
+        this.alive = true;
     }
     react_to_hit()
     {
-        if (this.world.multiball_cooldown==0)
-        this.world.multiball_cooldown=200;
+
+        if (this.world.multiball_cooldown==0 && this.alive == true)
+        {
+            this.world.multiball_cooldown=200;
+            this.alive = false;
+            //this.model_transform = Mat4.identity().times(Mat4.translation(0, 1000, 0));
+            this.material = this.world.materials.glow_red;
+        }
+        
+
+        
     }
 }
 
@@ -666,7 +676,7 @@ class Hit_All_Three extends PolyActor
 {
     constructor(world,model_transform,coords4D)
     {
-        super(world, world.shapes.cube, world.materials.rusty_metal, model_transform, 1, 0, 0, coords4D )
+        super(world, world.shapes.cube, world.materials.glow_red, model_transform, 1, three_ball_sound, 50, coords4D )
         this.has_been_hit=false
     }
     react_to_hit()
@@ -688,7 +698,7 @@ class Pinball extends RoundActor
         
         let model_transform=Mat4.identity().times(Mat4.translation(width-2,5,4)).times(Mat4.scale(1,1,1))
         
-        super(world, world.shapes.sphere,world.materials.iron,model_transform,1,0,0,1)
+        super(world, world.shapes.sphere,world.materials.iron,model_transform,1,0,0,0.6)
     
         this.launched=false;
         
@@ -705,7 +715,7 @@ class Pinball extends RoundActor
             let vel_changes=this.world.adjust_ball_velocity_for_collisions(this,dt);
             if (vel_changes!=null)
             this.change_velocities(vel_changes[0],vel_changes[1]);
-            if (this.center[1]<4.2)
+            if (this.center[1]<4.5)
         {
             this.die();
            
@@ -738,7 +748,7 @@ class Pinball extends RoundActor
 
     get_launched()
     {
-        this.change_velocities(3,.18*this.world.launch_speed)
+        this.change_velocities(0,.18*this.world.launch_speed)
         this.launched=true;
         this.world.camera_focus=this;
     }
@@ -746,7 +756,7 @@ class Pinball extends RoundActor
     apply_gravity(dt)
     {
        
-        let gravity=.001;
+        let gravity=.005;
         this.linear_velocity[1]-=gravity;
       
 
@@ -770,8 +780,7 @@ export class PinballWorld extends Simulation {
         //Camera-related settings
         this.ball_focus=false;
         // camera location
-        this.initial_camera_location = Mat4.look_at(vec3(35, -55, 90), vec3(35, 45, 0), vec3(0, 1, 1));
-        //this.initial_camera_location = Mat4.look_at(vec3(15, 25, 90), vec3(15, 25, 0), vec3(0, 1, 1));
+        this.initial_camera_location = Mat4.look_at(vec3(35, -55, 100), vec3(35, 55, 0), vec3(0, 1, 1));
         this.camera_focus=null;
         this.start_game_flag == false;
 
@@ -783,20 +792,24 @@ export class PinballWorld extends Simulation {
         {
 
             sphere: new defs.Subdivision_Sphere(4),
+            square: new defs.Square(),
             cube: new defs.Cube(),
             circle: new defs.Regular_2D_Polygon(1, 15),
             cylinder: new defs.Capped_Cylinder(10,10,[0,150]),
+            arrow_head: new Arrow_Head(),
             text: new Text_Line(15),
             text_long: new Text_Line(35),
+            text_longer: new Text_Line(55),
             machine_table: new Shape_From_File("assets/machine-table.obj"),
             machine_legs: new Shape_From_File("assets/machine-legs.obj"),
             machine_backboard: new Shape_From_File("assets/machine-backboard.obj"),
             //machine_table: new Shape_From_File("assets/machine-rebuilt.obj"),
             left_flipper: new Shape_From_File("assets/flip-left.obj"),
             right_flipper: new Shape_From_File("assets/flip-right.obj"),
-            nail: new Shape_From_File("assets/nail5.obj"),
-            bouncer: new Shape_From_File("assets/bouncer.obj"),
+            nail: new Shape_From_File("assets/nail_flip.obj"),
+            bouncer: new Shape_From_File("assets/bouncer_radius.obj"),
             mushroom: new Shape_From_File("assets/mushroom.obj"),
+            diamond: new Shape_From_File("assets/diamond.obj"),
             background_floor: new defs.Cube(),
             background_wall: new defs.Cube(),
             backboard: new defs.Cube()
@@ -829,19 +842,22 @@ export class PinballWorld extends Simulation {
             black: new Material(new defs.Phong_Shader(),
                 {color: hex_color("#000000"), ambient: 0.5, diffusivity: 0.5, specularity: 0.5}),
 
+            white: new Material(new defs.Phong_Shader(),
+                {color: hex_color("#ffffff"), ambient: 1, diffusivity: 0.5, specularity: 0.5}),                
+
             rusty_metal: new Material(new Textured_Phong(), { // use for obstacles
                 color: hex_color("#000000"),
-                ambient: 0.5, diffusivity: 0.5, specularity: 0.5,
+                ambient: 0.7, diffusivity: 0.5, specularity: 0.5,
                 texture: new Texture("assets/rust-tex.jpg")}),
 
             rusty_metal2: new Material(new Textured_Phong(), { // use for obstacles
                 color: hex_color("#000000"),
-                ambient: 0.5, diffusivity: 0.5, specularity: 0.5,
+                ambient: 0.7, diffusivity: 0.5, specularity: 0.5,
                 texture: new Texture("assets/rust-tex2.jpg")}),
 
             iron: new Material(new Textured_Phong(), { // use for pinball
                 color: hex_color("#000000"),
-                ambient: 0.5, diffusivity: 0.1, specularity: 1,
+                ambient: 0.7, diffusivity: 0.1, specularity: 1,
                 texture: new Texture("assets/iron.jpg")}),
             
             metallic_plate: new Material(new Textured_Phong(), {
@@ -866,7 +882,7 @@ export class PinballWorld extends Simulation {
 
             red_steel: new Material(new Textured_Phong(), {
                 color: hex_color("#000000"),
-                ambient: 0.7, diffusivity: 0.8, specularity: 0.5,
+                ambient: 0.8, diffusivity: 0.8, specularity: 0.5,
                 texture: new Texture("assets/red_steel.jpg")}),
 
             blocks: new Material(new Textured_Phong(), {
@@ -882,7 +898,53 @@ export class PinballWorld extends Simulation {
             pinball_wizard: new Material(new Textured_Phong(), {
                 color: hex_color("#000000"),
                 ambient: 0.7, diffusivity: 0.8, specularity: 0.1,
-                texture: new Texture("assets/pinball_wizard.jpg")}),
+                texture: new Texture("assets/pinball_wizard.png")}),
+            
+            james_bond: new Material(new Textured_Phong(), {
+                color: hex_color("#000000"),
+                ambient: 0.4, diffusivity: 0.8, specularity: 0.1,
+                texture: new Texture("assets/james_bond.png")}),
+
+            star_wars: new Material(new Textured_Phong(), {
+                color: hex_color("#000000"),
+                ambient: 0.4, diffusivity: 0.8, specularity: 0.1,
+                texture: new Texture("assets/star_wars.jpg")}),
+
+            pulp_fiction: new Material(new Textured_Phong(), {
+                color: hex_color("#000000"),
+                ambient: 0.4, diffusivity: 0.8, specularity: 0.1,
+                texture: new Texture("assets/pulp_fiction.jpg")}),
+            
+            jaws: new Material(new Textured_Phong(), {
+                color: hex_color("#000000"),
+                ambient: 0.4, diffusivity: 0.8, specularity: 0.1,
+                texture: new Texture("assets/jaws.jpg")}),
+            
+            elton_john: new Material(new Textured_Phong(), {
+                color: hex_color("#000000"),
+                ambient: 0.9, diffusivity: 0.8, specularity: 0.1,
+                texture: new Texture("assets/elton_john.jpg")}),
+            
+            tina_turner: new Material(new Textured_Phong(), {
+                color: hex_color("#000000"),
+                ambient: 0.9, diffusivity: 0.8, specularity: 0.1,
+                texture: new Texture("assets/tina_turner.jpg")}),
+            
+            tommy: new Material(new Textured_Phong(), {
+                color: hex_color("#000000"),
+                ambient: 0.9, diffusivity: 0.8, specularity: 0.1,
+                texture: new Texture("assets/tommy.png")}),
+
+            glow_red: new Material(new Textured_Phong(), {
+                color: hex_color("#000000"),
+                ambient: 0.9, diffusivity: 0.8, specularity: 0.8,
+                texture: new Texture("assets/glow_red.png")}),
+
+            glow_yellow: new Material(new Textured_Phong(), {
+                color: hex_color("#000000"),
+                ambient: 0.9, diffusivity: 0.8, specularity: 0.8,
+                texture: new Texture("assets/glow_yellow.png")}),
+
 
 
                 
@@ -901,14 +963,27 @@ export class PinballWorld extends Simulation {
         flipper_sound_left = new Audio("assets/flip.mp3");
         flipper_sound_right = new Audio("assets/flip.mp3");
         game_over_sound = new Audio("assets/game_over_sound.mp3");
+        start_game_sound = new Audio("assets/insert_quarter_start_game_sound.mp3");
+        spring_pull_up_sound = new Audio("assets/spring_pull_up_sound.mp3");
+        spring_pull_down_sound = new Audio("assets/spring_pull_down_sound.mp3");
+        insert_quarter_sound = new Audio("assets/insert_quarter_sound.mp3");
+        change_camera_sound = new Audio("assets/swoosh.mp3");
+        score_sound = new Audio("assets/score_sound.mp3");
+        mushroom_bounce_sound = new Audio("assets/pinball_bounce2.mp3");
+        bouncer_sound = new Audio("assets/bouncer_sound.mp3");
+        three_ball_sound = new Audio("assets/three_ball_sound.mp3");
+        who_riff_1 = new Audio("assets/who_riff_1.mp3");
+        who_riff_2 = new Audio("assets/who_riff_2.mp3");
 
-        this.has_sound_played_flag = false; //used to make sure game over sound doesn't repeat because it is inside display function
 
-
+        
+        this.has_sound_played_flag = false; // used to make sure game over sound doesn't repeat because it is inside display function
+        this.show_start_screen_flag = true; // show starting text the first time you play
+        
 
         //Initial Game Settings
       
-        this.multiball_cooldown=50000;
+        this.multiball_cooldown=0;
         this.balls_remaining=0;
         this.active_balls=0;
 
@@ -988,25 +1063,25 @@ export class PinballWorld extends Simulation {
 
         let bouncer_rot_transform=model_transform.times(Mat4.rotation(Math.PI/2,1,0,0))
 
-        this.bodies=[new PolyActor(this,this.shapes.cube, this.materials.red_steel,left_transform,1,bounce_sound,0,cube_vertices),
-           new PolyActor(this,this.shapes.cube, this.materials.red_steel,right_transform,1,bounce_sound,0,cube_vertices),
-           new PolyActor(this,this.shapes.cube, this.materials.red_steel,top_transform,1,bounce_sound,0,cube_vertices),
-           new PolyActor(this,this.shapes.cube, this.materials.red_steel,bottom_transform,1,bounce_sound,0,cube_vertices),
-           new PolyActor(this,this.shapes.cube, this.materials.red_steel,diag_transform,1,bounce_sound,0,cube_vertices),
-           new PolyActor(this,this.shapes.cube, this.materials.red_steel,right_barrier,1,bounce_sound,0,cube_vertices),
-           new PolyActor(this,this.shapes.cube, this.materials.red_steel,left_diag,1,bounce_sound,0,cube_vertices),
-           new PolyActor(this,this.shapes.cube, this.materials.red_steel,right_diag,1,bounce_sound,0,cube_vertices),
+        this.bodies=[new PolyActor(this,this.shapes.cube, this.materials.red_steel,left_transform,0.9,bounce_sound,0,cube_vertices),
+           new PolyActor(this,this.shapes.cube, this.materials.red_steel,right_transform,0.9,bounce_sound,0,cube_vertices),
+           new PolyActor(this,this.shapes.cube, this.materials.red_steel,top_transform,0.9,bounce_sound,0,cube_vertices),
+           new PolyActor(this,this.shapes.cube, this.materials.red_steel,bottom_transform,0.9,bounce_sound,0,cube_vertices),
+           new PolyActor(this,this.shapes.cube, this.materials.red_steel,diag_transform,0.9,bounce_sound,0,cube_vertices),
+           new PolyActor(this,this.shapes.cube, this.materials.red_steel,right_barrier,0.9,bounce_sound,0,cube_vertices),
+           new PolyActor(this,this.shapes.cube, this.materials.red_steel,left_diag,0.9,bounce_sound,0,cube_vertices),
+           new PolyActor(this,this.shapes.cube, this.materials.red_steel,right_diag,0.9,bounce_sound,0,cube_vertices),
            
-           new PolyActor(this,this.shapes.cube, this.materials.red_steel,right_flipper_side,1,bounce_sound,0,cube_vertices),
-           new PolyActor(this,this.shapes.cube, this.materials.red_steel,left_flipper_side,1,bounce_sound,0,cube_vertices),
+           new PolyActor(this,this.shapes.cube, this.materials.red_steel,right_flipper_side,0.9,bounce_sound,0,cube_vertices),
+           new PolyActor(this,this.shapes.cube, this.materials.red_steel,left_flipper_side,0.9,bounce_sound,0,cube_vertices),
             //new PolyActor(this,this.shapes.left_flipper, this.materials.stars,Mat4.identity(),1,0,0,flipper_vertices),
-           new MultiballBonus(this,Mat4.identity().times(Mat4.translation(30,50,4)),cube_vertices),
+           
            
 
             ]
 
 
-         this.obstacles=[...this.bodies]
+         
          
 
 
@@ -1015,49 +1090,120 @@ export class PinballWorld extends Simulation {
 
 
 
-            
-          let first_of_three=new Hit_All_Three(this, first_hit_all_three_transform,cube_vertices)
-          let second_of_three=new Hit_All_Three(this, second_hit_all_three_transform,cube_vertices)
-          let third_of_three= new Hit_All_Three(this, third_hit_all_three_transform,cube_vertices)
+
+
           let left_flipper=new Flipper(this,false)
           let right_flipper=new Flipper(this, true)
           this.bodies.push(left_flipper);
           this.bodies.push(right_flipper);
           this.flippers=[left_flipper,right_flipper]
-          this.obstacles.push(left_flipper)
-          this.obstacles.push(right_flipper)
+//           this.obstacles.push(left_flipper)
+//           this.obstacles.push(right_flipper)
           //  new PolyActor(this,this.shapes.cube, this.materials.wall,bottom_transform,1,0,0),
             
           //  new PolyActor(this,this.shapes.cube, this.materials.wall,model_transform.times(Mat4.translation(5,5,4)),1,0,0,[[4,4],[4,6],[6,6],[6,4]])
-          let test_transform = model_transform.times(Mat4.translation(20, 20, 4));
+          
           //let test_mushroom = new Mushroom(this, test_transform, [[19,19], [19,21], [21,21], [21,19]]);
           
 
+
           //let test_mushroom = new PolyActor(this, this.shapes.mushroom, this.materials.rusty_metal, test_transform, 1, bounce_sound, 25, cube_vertices);
           //this.bodies.push(test_mushroom);
-          this.trio=[first_of_three,second_of_three,third_of_three]
-          this.bodies.push(first_of_three);
-          this.bodies.push(second_of_three);
-          this.bodies.push(third_of_three);
-          this.obstacles.push(first_of_three)
-          this.obstacles.push(second_of_three)
-          this.obstacles.push(third_of_three)
+         
           
+
+
         //Obstacle Building
 
-        var i;
-        var j; 
-        for (i=5;i<27;i+=2)
-        {
-            for (j=5;j<25;j+=2)
-            {
-                
-                if (i%4==j%4) continue;
-               // let obj_transform=Mat4.identity().times(Mat4.translation(j,i,4)).times(Mat4.scale(.5,.5,.5));
-      //           this.bodies.push(new PolyActor(this,this.shapes.cube, this.materials.pinball,obj_transform,1,0,0,[[j-.5,i-.5],[j-.5,i+.5],[j+.5,i+.5],[j+.5,i-.5]]))
+        // nails left side
+        // TODO: Figure out nails in blender. if collisions are all good after merge then disregard
+        let nail_transform1 = model_transform.times(Mat4.translation(6, 48, 4));
+        let nail1 = new PolyActor(this, this.shapes.nail, this.materials.iron, nail_transform1, 1, bounce_sound, 10, cube_vertices);
+        let nail_transform2 = model_transform.times(Mat4.translation(12, 48, 4));
+        let nail2 = new PolyActor(this, this.shapes.nail, this.materials.iron, nail_transform2, 1, bounce_sound, 10, cube_vertices);
+        let nail_transform3 = model_transform.times(Mat4.translation(18, 48, 4));
+        let nail3 = new PolyActor(this, this.shapes.nail, this.materials.iron, nail_transform3, 1, bounce_sound, 10, cube_vertices);
+        let nail_transform4 = model_transform.times(Mat4.translation(9, 42, 4));
+        let nail4 = new PolyActor(this, this.shapes.nail, this.materials.iron, nail_transform4, 1, bounce_sound, 10, cube_vertices);
+        let nail_transform5 = model_transform.times(Mat4.translation(15, 42, 4));
+        let nail5 = new PolyActor(this, this.shapes.nail, this.materials.iron, nail_transform5, 1, bounce_sound, 10, cube_vertices);
+        let nail_transform6 = model_transform.times(Mat4.translation(21, 42, 4));
+        let nail6 = new PolyActor(this, this.shapes.nail, this.materials.iron, nail_transform6, 1, bounce_sound, 10, cube_vertices);
+        let nail_transform7 = model_transform.times(Mat4.translation(6, 36, 4));
+        let nail7 = new PolyActor(this, this.shapes.nail, this.materials.iron, nail_transform7, 1, bounce_sound, 10, cube_vertices);
+        let nail_transform8 = model_transform.times(Mat4.translation(12, 36, 4));
+        let nail8 = new PolyActor(this, this.shapes.nail, this.materials.iron, nail_transform8, 1, bounce_sound, 10, cube_vertices);
+        let nail_transform9 = model_transform.times(Mat4.translation(18, 36, 4));
+        let nail9 = new PolyActor(this, this.shapes.nail, this.materials.iron, nail_transform9, 1, bounce_sound, 10, cube_vertices);
 
-            }
-        }
+        // nails right side
+        let nail_transform10 = model_transform.times(Mat4.translation(46, 48, 4));
+        let nail10 = new PolyActor(this, this.shapes.nail, this.materials.iron, nail_transform10, 1, bounce_sound, 10, cube_vertices);
+        let nail_transform11 = model_transform.times(Mat4.translation(52, 48, 4));
+        let nail11 = new PolyActor(this, this.shapes.nail, this.materials.iron, nail_transform11, 1, bounce_sound, 10, cube_vertices);
+        let nail_transform12 = model_transform.times(Mat4.translation(58, 48, 4));
+        let nail12 = new PolyActor(this, this.shapes.nail, this.materials.iron, nail_transform12, 1, bounce_sound, 10, cube_vertices);
+        let nail_transform13 = model_transform.times(Mat4.translation(43, 42, 4));
+        let nail13 = new PolyActor(this, this.shapes.nail, this.materials.iron, nail_transform13, 1, bounce_sound, 10, cube_vertices);
+        let nail_transform14 = model_transform.times(Mat4.translation(49, 42, 4));
+        let nail14 = new PolyActor(this, this.shapes.nail, this.materials.iron, nail_transform14, 1, bounce_sound, 10, cube_vertices);
+        let nail_transform15 = model_transform.times(Mat4.translation(55, 42, 4));
+        let nail15 = new PolyActor(this, this.shapes.nail, this.materials.iron, nail_transform15, 1, bounce_sound, 10, cube_vertices);
+        let nail_transform16 = model_transform.times(Mat4.translation(46, 36, 4));
+        let nail16 = new PolyActor(this, this.shapes.nail, this.materials.iron, nail_transform16, 1, bounce_sound, 10, cube_vertices);
+        let nail_transform17 = model_transform.times(Mat4.translation(52, 36, 4));
+        let nail17 = new PolyActor(this, this.shapes.nail, this.materials.iron, nail_transform17, 1, bounce_sound, 10, cube_vertices);
+        let nail_transform18 = model_transform.times(Mat4.translation(58, 36, 4));
+        let nail18 = new PolyActor(this, this.shapes.nail, this.materials.iron, nail_transform18, 1, bounce_sound, 10, cube_vertices);
+
+        this.bodies.push(nail1, nail2, nail3, nail4, nail5, nail6, nail7, nail8, nail9, nail10, nail11, nail12, nail13, nail14, nail15, nail16, nail17, nail18);
+
+        // mushroom placement
+        let mushroom_transform1 = model_transform.times(Mat4.translation(15, 58, 4));
+        let mushroom1 = new PolyActor(this, this.shapes.mushroom, this.materials.rusty_metal, mushroom_transform1, 0.8, mushroom_bounce_sound, 50, cube_vertices);
+        let mushroom_transform2 = model_transform.times(Mat4.translation(49, 58, 4));
+        let mushroom2 = new PolyActor(this, this.shapes.mushroom, this.materials.rusty_metal, mushroom_transform2, 0.8, mushroom_bounce_sound, 50, cube_vertices);
+        let mushroom_transform3 = model_transform.times(Mat4.translation(20, 20, 4));
+        let mushroom3 = new PolyActor(this, this.shapes.mushroom, this.materials.rusty_metal, mushroom_transform3, 0.8, mushroom_bounce_sound, 50, cube_vertices);
+        let mushroom_transform4 = model_transform.times(Mat4.translation(44, 20, 4));
+        let mushroom4 = new PolyActor(this, this.shapes.mushroom, this.materials.rusty_metal, mushroom_transform4, 0.8, mushroom_bounce_sound, 50, cube_vertices);
+        
+        this.bodies.push(mushroom1, mushroom2, mushroom3, mushroom4);
+
+        // bouncer placement
+        let bouncer_transform1 = model_transform.times(Mat4.translation(21, 64, 4)).times(Mat4.scale(1.5, 1.5, 1));
+        let bouncer1 = new PolyActor(this, this.shapes.bouncer, this.materials.rusty_metal2, bouncer_transform1, 1.1, bouncer_sound, 100, cube_vertices);
+        let bouncer_transform2 = model_transform.times(Mat4.translation(43, 64, 4)).times(Mat4.scale(1.5, 1.5, 1));
+        let bouncer2 = new PolyActor(this, this.shapes.bouncer, this.materials.rusty_metal2, bouncer_transform2, 1.1, bouncer_sound, 100, cube_vertices);
+        let bouncer_transform3 = model_transform.times(Mat4.translation(15, 24, 4)).times(Mat4.scale(1.5, 1.5, 1));
+        let bouncer3 = new PolyActor(this, this.shapes.bouncer, this.materials.rusty_metal2, bouncer_transform3, 1.1, bouncer_sound, 100, cube_vertices);
+        let bouncer_transform4 = model_transform.times(Mat4.translation(49, 24, 4)).times(Mat4.scale(1.5, 1.5, 1));
+        let bouncer4 = new PolyActor(this, this.shapes.bouncer, this.materials.rusty_metal2, bouncer_transform4, 1.1, bouncer_sound, 100, cube_vertices);
+
+        this.bodies.push(bouncer1, bouncer2, bouncer3, bouncer4);
+
+        // multiball placement
+        // TODO: replace cube with multiball shape
+        let multiball_transform1 = model_transform.times(Mat4.translation(8, 56, 5)).times(Mat4.scale(1.5, 1.5, 1.5));
+        let multiball1 = new MultiballBonus(this, multiball_transform1, cube_vertices);
+        let multiball_transform2 = model_transform.times(Mat4.translation(56, 56, 5)).times(Mat4.scale(1.5, 1.5, 1.5));
+        let multiball2 = new MultiballBonus(this, multiball_transform2, cube_vertices);
+
+        this.bodies.push(multiball1, multiball2);
+
+        // 3-ball placement
+        let three_ball_transform1 = model_transform.times(Mat4.translation(6, 78, 5)).times(Mat4.scale(2, 0.1, 2));
+        let three_ball1 = new Hit_All_Three(this, three_ball_transform1, cube_vertices);
+        let three_ball_transform2 = model_transform.times(Mat4.translation(12, 78, 5)).times(Mat4.scale(2, 0.1, 2));
+        let three_ball2 = new Hit_All_Three(this, three_ball_transform2, cube_vertices);
+        let three_ball_transform3 = model_transform.times(Mat4.translation(18, 78, 5)).times(Mat4.scale(2, 0.1, 2));
+        let three_ball3 = new Hit_All_Three(this, three_ball_transform3, cube_vertices);
+        this.trio=[three_ball1, three_ball2, three_ball3];
+    
+        this.bodies.push(three_ball1, three_ball2, three_ball3);    
+
+        this.obstacles=[...this.bodies]     
+
 
     }
 
@@ -1076,10 +1222,17 @@ export class PinballWorld extends Simulation {
                 let vel_adjustments=this.obstacles[i].check_if_ball_inside_and_provide_vel_changes(ball,dt);
                 if (vel_adjustments!= null)
                 {
-                    this.score += this.obstacles[i].object_score_value; // update score. i think this is where collisions are detected
-                    if(this.obstacles[i].sound_effect != 0)
+
+                    score += this.obstacles[i].object_score_value; // update score. i think this is where collisions are detected
+                    if(this.bodies[i].object_score_value > 0)
                     {
-                        this.obstacles[i].sound_effect.play();
+                        score_sound.pause(); // pause and reset so you can click button rapidly
+                        score_sound.currentTime = 0;
+                        score_sound.play();
+                    }
+                    if(this.bodies[i].sound_effect != 0)
+                    {
+                        this.bodies[i].sound_effect.play();
                     }
                     
                     final_adjustment=vel_adjustments
@@ -1097,7 +1250,7 @@ export class PinballWorld extends Simulation {
                 let vel_adjustments=this.pinballs[j].check_if_ball_inside_and_provide_vel_changes(ball,dt);
                 if (vel_adjustments!= null)
                 {
-                    this.score += this.pinballs[j].object_score_value; // update score. i think this is where collisions are detected
+                    score += this.pinballs[j].object_score_value; // update score. i think this is where collisions are detected
                     if(this.pinballs[j].sound_effect != 0)
                     {
                         this.pinballs[j].sound_effect.play();
@@ -1125,16 +1278,15 @@ export class PinballWorld extends Simulation {
 
     start_game()
     {
+
         this.start_game_flag = true;
         this.balls_remaining = 5;
         this.has_sound_played_flag = false;
         this.place_ball_in_launcher();
     }
 
-    end_game(program_state)
+    end_game()
     {
-        //console.log("GAME OVER");
-        //let game_over_camera_location = this.model_transform.times(Mat4.translation(500, 0, 0));
         
 
     }
@@ -1142,10 +1294,25 @@ export class PinballWorld extends Simulation {
 
     make_control_panel(context,program_state) {
         // Draw the scene's buttons, setup their actions and keyboard shortcuts, and monitor live measurements.
-        this.key_triggered_button("Start Game", ["Control", "0"], () => this.start_game())
+        this.key_triggered_button("Start Game", ["v"], () => {
+            start_game_sound.play();
+            this.show_start_screen_flag = false; // don't show start screen again
+            score = 0;
+            this.start_game()
+        });
         this.new_line();
-        this.key_triggered_button("Pull spring back more", ["Control", "1"], () => this.launch_speed=Math.min(10,this.launch_speed+1));
-        this.key_triggered_button("Pull spring back less", ["Control", "2"], () => this.launch_speed=Math.max(0,this.launch_speed-1));
+        this.key_triggered_button("Pull spring back more", ["m"], () => {
+            spring_pull_up_sound.pause(); // pause and reset so you can click button rapidly
+            spring_pull_up_sound.currentTime = 0;
+            spring_pull_up_sound.play();
+            this.launch_speed=Math.min(10,this.launch_speed+1);
+        });
+        this.key_triggered_button("Pull spring back less", ["n"], () => {
+            spring_pull_down_sound.pause(); // pause and reset so you can click button rapidly
+            spring_pull_down_sound.currentTime = 0;
+            spring_pull_down_sound.play();
+            this.launch_speed=Math.max(0,this.launch_speed-1);
+        });
         this.key_triggered_button("Left Flipper", ["l"], () => {
             if (this.left_flipper_cooldown==0)flipper_sound_left.play();
             this.left_flipper_cooldown=12;
@@ -1157,8 +1324,12 @@ export class PinballWorld extends Simulation {
             
         });
         this.new_line();
-        this.key_triggered_button("Launch Pinball", ["Control", "3"], () => {this.launch_ball()});
-        this.key_triggered_button("Switch camera", ["Control", "4"], () => this.ball_focus=!this.ball_focus);
+        this.key_triggered_button("Launch Pinball", ["Enter"], () => {this.launch_ball()});
+        this.key_triggered_button("Switch camera", ["c"], () => 
+        {
+            change_camera_sound.play();
+            this.ball_focus = !this.ball_focus;
+        });
         //this.new_line();
 
     }
@@ -1174,9 +1345,9 @@ export class PinballWorld extends Simulation {
         if (this.multiball_cooldown==0)
         this.balls_remaining -= 1;
         this.active_balls += 1;
-        //console.log(this.balls_remaining);
-        //console.log(this.active_balls);
+
         }
+        this.launch_speed = 0; // game design? maybe we don't want to reset speed after launch but its more realistic
     }
 
 
@@ -1216,26 +1387,52 @@ export class PinballWorld extends Simulation {
         let model_transform=Mat4.identity();
 
 
-        let below_transform=model_transform.times(Mat4.translation(this.board_right/2,this.board_top/2,1)).times(Mat4.scale(this.board_right/2+1,this.board_top/2+1,1))
-       // this.shapes.cube.draw(context, program_state, below_transform, this.materials.floor);
-
-
         if (this.ball_focus && this.camera_focus!=null) 
-        program_state.set_camera(Mat4.inverse(this.camera_focus.drawn_location.times(Mat4.translation(0,0,20))));
+        program_state.set_camera(Mat4.inverse(this.camera_focus.drawn_location.times(Mat4.translation(0,0,40))));
         else program_state.set_camera(this.initial_camera_location);
 
 
         super.display(context,program_state);
 
+        // start screen text
+        if(this.show_start_screen_flag == true)
+        {
+            let start_screen_string = "Welcome to Pinball Wizard";
+            let start_screen_transform = model_transform.times(Mat4.translation(-35, 40, 30)).times(Mat4.scale(4, 4, 4)).times(Mat4.rotation(Math.PI/2, 1, 0, 0));
+            this.shapes.text_long.set_string(start_screen_string, context.context);
+            this.shapes.text_long.draw(context, program_state, start_screen_transform, this.text_image);
+
+            let start_screen_string2 = "Press 'Start Game' to Insert a Quarter and Play";
+            let start_screen_transform2 = model_transform.times(Mat4.translation(-32, 40, 20)).times(Mat4.scale(2, 2, 2)).times(Mat4.rotation(Math.PI/2, 1, 0, 0));
+            this.shapes.text_longer.set_string(start_screen_string2, context.context);
+            this.shapes.text_longer.draw(context, program_state, start_screen_transform2, this.text_image);
+        }
+        
+
+        // loading spring handler
+        let spring_base_transform = model_transform.times(Mat4.translation(68, -2.5, 4)).times(Mat4.scale(2, 0.75, 2)).times(Mat4.rotation(Math.PI/2, 1, 0, 0));
+        for(var j = 0; j < this.launch_speed; j++)
+        {
+            this.shapes.cylinder.draw(context, program_state, spring_base_transform, this.materials.rusty_metal2);
+            spring_base_transform = spring_base_transform.times(Mat4.translation(0, 0, 0.75));
+            let arrow_body_transform = model_transform.times(Mat4.translation(68, 8 + this.launch_speed, 4)).times(Mat4.scale(0.25, 1 + this.launch_speed, 0.25));
+            this.shapes.square.draw(context, program_state, arrow_body_transform, this.materials.white);
+            let arrow_head_transform = model_transform.times(Mat4.translation(68, 8 + 2*this.launch_speed, 4));
+            this.shapes.arrow_head.draw(context, program_state, arrow_head_transform, this.materials.white);
+        }
+
+
+
+
 
         // scoreboard drawing and transformation
-        let num_string = this.score.toString();
+        let num_string = score.toString();
         while(num_string.length < 4) // allow 4 digits to be displayed at all times
         {
             num_string = "0" + num_string;
         }
         let score_string = "Score: " + num_string;
-        let score_transform = model_transform.times(Mat4.translation(20, 79, 30)).times(Mat4.scale(2, 2, 2)).times(Mat4.rotation(17*Math.PI/36, 1, 0, 0));
+        let score_transform = model_transform.times(Mat4.translation(20, 79, 43)).times(Mat4.scale(2, 2, 2)).times(Mat4.rotation(17*Math.PI/36, 1, 0, 0));
         this.shapes.text.set_string(score_string, context.context);
         this.shapes.text.draw(context, program_state, score_transform, this.text_image);
 
@@ -1247,13 +1444,23 @@ export class PinballWorld extends Simulation {
         this.shapes.background_floor.draw(context, program_state, background_floor_transform, this.materials.wood);
         let background_wall_transform = model_transform.times(Mat4.translation(20, 125, 20)).times(Mat4.scale(200, 1, 70));
         this.shapes.background_wall.draw(context, program_state, background_wall_transform, this.materials.brick);
-
+        let background_image_1_transform = model_transform.times(Mat4.translation(-80, 123, 17)).times(Mat4.scale(25, 1, 25)).times(Mat4.rotation(Math.PI/2, 1, 0, 0));
+        this.shapes.square.draw(context, program_state, background_image_1_transform, this.materials.james_bond);
+        let background_image_2_transform = model_transform.times(Mat4.translation(-10, 123, 17)).times(Mat4.scale(25, 1, 25)).times(Mat4.rotation(Math.PI/2, 1, 0, 0));
+        this.shapes.square.draw(context, program_state, background_image_2_transform, this.materials.pulp_fiction);
+        let background_image_3_transform = model_transform.times(Mat4.translation(90, 123, 17)).times(Mat4.scale(25, 1, 25)).times(Mat4.rotation(Math.PI/2, 1, 0, 0));
+        this.shapes.square.draw(context, program_state, background_image_3_transform, this.materials.star_wars);
+        let background_image_4_transform = model_transform.times(Mat4.translation(160, 123, 17)).times(Mat4.scale(25, 1, 25)).times(Mat4.rotation(Math.PI/2, 1, 0, 0));
+        this.shapes.square.draw(context, program_state, background_image_4_transform, this.materials.jaws);
+        
         // pinball table drawing and transformations
         let machine_table_transform = model_transform.times(Mat4.translation(35, 55, -6)).times(Mat4.scale(77, 50, 40)).times(Mat4.rotation(17*Math.PI/36, 1, 0, 0));
         this.shapes.machine_table.draw(context, program_state, machine_table_transform, this.materials.red_steel);
-        //let machine_backboard_transform = model_transform.times(Mat4.translation(20, 49, 20)).times(Mat4.scale(26, 20, 30)).times(Mat4.rotation(17*Math.PI/36, 1, 0, 0));
-        let machine_backboard_transform = model_transform.times(Mat4.translation(35, 89, 20)).times(Mat4.scale(37, 7, 25)).times(Mat4.rotation(17*Math.PI/36, 1, 0, 0));
+        let machine_backboard_transform = model_transform.times(Mat4.translation(35, 89, 20)).times(Mat4.scale(37, 7, 28)).times(Mat4.rotation(17*Math.PI/36, 1, 0, 0));
         this.shapes.backboard.draw(context, program_state, machine_backboard_transform, this.materials.red_steel);
+        let backboard_image_transform = model_transform.times(Mat4.translation(35, 81, 23)).times(Mat4.scale(25, 0.1, 15)).times(Mat4.rotation(17*Math.PI/36, 1, 0, 0));
+        this.shapes.square.draw(context, program_state, backboard_image_transform, this.materials.pinball_wizard);
+
         let machine_legs_transform = model_transform.times(Mat4.translation(35, 50, -30)).times(Mat4.scale(77, 50, 60)).times(Mat4.rotation(17*Math.PI/36, 1, 0, 0));
         this.shapes.machine_legs.draw(context, program_state, machine_legs_transform, this.materials.red_steel);
 
@@ -1353,7 +1560,7 @@ export class PinballWorld extends Simulation {
 
         if (this.hit_all_three_count==3)
         {
-            this.score+=1000
+            score+=1000
             
             this.hit_all_three_count=0;
             this.trio[0].has_been_hit=false;
@@ -1374,15 +1581,17 @@ export class PinballWorld extends Simulation {
 
 
 
-
-
-
-
-
-
-
-
-
+const Arrow_Head = defs.Arrow =
+    class Arrow extends Shape {
+        // An axis set with arrows, made out of a lot of various primitives.
+        constructor() {
+            super("position", "normal", "texture_coord");
+            const triangle_transformR = Mat4.translation(0, 0, 0);
+            const triangle_transformL = Mat4.translation(0, 0, 0).times(Mat4.rotation(Math.PI/2, 0, 0, 1));
+            defs.Triangle.insert_transformed_copy_into(this, [], triangle_transformR);
+            defs.Triangle.insert_transformed_copy_into(this, [], triangle_transformL);
+        }
+    }
 
 
 
