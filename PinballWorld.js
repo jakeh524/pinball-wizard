@@ -10,7 +10,7 @@ const {Cube, Square, Triangle, Textured_Phong} = defs
 
 
 let score = 0;
-var bounce_sound, launch_sound, lost_ball_sound, flipper_sound_left, flipper_sound_right, game_over_sound, start_game_sound, spring_pull_up_sound, spring_pull_down_sound, insert_quarter_sound, change_camera_sound, score_sound;
+var bounce_sound, mushroom_bounce_sound, bouncer_sound, three_ball_sound, launch_sound, lost_ball_sound, flipper_sound_left, flipper_sound_right, game_over_sound, start_game_sound, spring_pull_up_sound, spring_pull_down_sound, insert_quarter_sound, change_camera_sound, score_sound, who_riff_1, who_riff_2;
 
 
 
@@ -523,7 +523,6 @@ export class PinballWorld extends Simulation {
         this.ball_focus=false;
         // camera location
         this.initial_camera_location = Mat4.look_at(vec3(35, -55, 100), vec3(35, 55, 0), vec3(0, 1, 1));
-        //this.initial_camera_location = Mat4.look_at(vec3(15, 25, 90), vec3(15, 25, 0), vec3(0, 1, 1));
         this.camera_focus=null;
         this.start_game_flag == false;
 
@@ -549,9 +548,10 @@ export class PinballWorld extends Simulation {
             //machine_table: new Shape_From_File("assets/machine-rebuilt.obj"),
             left_flipper: new Shape_From_File("assets/flip-left.obj"),
             right_flipper: new Shape_From_File("assets/flip-right.obj"),
-            nail: new Shape_From_File("assets/nail_flip.obj"),
-            bouncer: new Shape_From_File("assets/bouncer_flip.obj"),
+            nail: new Shape_From_File("assets/nail_radius.obj"),
+            bouncer: new Shape_From_File("assets/bouncer_radius.obj"),
             mushroom: new Shape_From_File("assets/mushroom.obj"),
+            diamond: new Shape_From_File("assets/diamond.obj"),
             background_floor: new defs.Cube(),
             background_wall: new defs.Cube(),
             backboard: new defs.Cube()
@@ -661,6 +661,31 @@ export class PinballWorld extends Simulation {
                 color: hex_color("#000000"),
                 ambient: 0.4, diffusivity: 0.8, specularity: 0.1,
                 texture: new Texture("assets/jaws.jpg")}),
+            
+            elton_john: new Material(new Textured_Phong(), {
+                color: hex_color("#000000"),
+                ambient: 0.9, diffusivity: 0.8, specularity: 0.1,
+                texture: new Texture("assets/elton_john.jpg")}),
+            
+            tina_turner: new Material(new Textured_Phong(), {
+                color: hex_color("#000000"),
+                ambient: 0.9, diffusivity: 0.8, specularity: 0.1,
+                texture: new Texture("assets/tina_turner.jpg")}),
+            
+            tommy: new Material(new Textured_Phong(), {
+                color: hex_color("#000000"),
+                ambient: 0.9, diffusivity: 0.8, specularity: 0.1,
+                texture: new Texture("assets/tommy.png")}),
+
+            glow_red: new Material(new Textured_Phong(), {
+                color: hex_color("#000000"),
+                ambient: 0.9, diffusivity: 0.8, specularity: 0.8,
+                texture: new Texture("assets/glow_red.png")}),
+
+            glow_yellow: new Material(new Textured_Phong(), {
+                color: hex_color("#000000"),
+                ambient: 0.9, diffusivity: 0.8, specularity: 0.8,
+                texture: new Texture("assets/glow_yellow.png")}),
 
 
 
@@ -686,11 +711,17 @@ export class PinballWorld extends Simulation {
         insert_quarter_sound = new Audio("assets/insert_quarter_sound.mp3");
         change_camera_sound = new Audio("assets/swoosh.mp3");
         score_sound = new Audio("assets/score_sound.mp3");
+        mushroom_bounce_sound = new Audio("assets/pinball_bounce2.mp3");
+        bouncer_sound = new Audio("assets/bouncer_sound.mp3");
+        three_ball_sound = new Audio("assets/three_ball_sound.mp3");
+        who_riff_1 = new Audio("assets/who_riff_1.mp3");
+        who_riff_2 = new Audio("assets/who_riff_2.mp3");
+
 
         
         this.has_sound_played_flag = false; // used to make sure game over sound doesn't repeat because it is inside display function
         this.show_start_screen_flag = true; // show starting text the first time you play
-
+        
 
         //Initial Game Settings
       
@@ -797,28 +828,93 @@ export class PinballWorld extends Simulation {
           
 
         //Obstacle Building
-        //let test_verticies = cube_vertices[0] = 
-        let test_transform = model_transform.times(Mat4.translation(20, 20, 4));
-        let test_mushroom = new PolyActor(this, this.shapes.mushroom, this.materials.rusty_metal, test_transform, 1, bounce_sound, 25, cube_vertices);
-        let test_transform2 = model_transform.times(Mat4.translation(25, 20, 4));
-        let test_bouncer = new PolyActor(this, this.shapes.bouncer, this.materials.rusty_metal2, test_transform2, 1.2, bounce_sound, 25, cube_vertices);
-        let test_transform3 = model_transform.times(Mat4.translation(30, 20, 4));
-        let test_nail = new PolyActor(this, this.shapes.nail, this.materials.iron, test_transform3, 1, bounce_sound, 25, cube_vertices);
-        this.bodies.push(test_mushroom, test_bouncer, test_nail);
 
-        var i;
-        var j; 
-        for (i=5;i<27;i+=2)
-        {
-            for (j=5;j<25;j+=2)
-            {
-                
-                if (i%4==j%4) continue;
-               // let obj_transform=Mat4.identity().times(Mat4.translation(j,i,4)).times(Mat4.scale(.5,.5,.5));
-      //           this.bodies.push(new PolyActor(this,this.shapes.cube, this.materials.pinball,obj_transform,1,0,0,[[j-.5,i-.5],[j-.5,i+.5],[j+.5,i+.5],[j+.5,i-.5]]))
+        // nails left side
+        // TODO: Figure out nails in blender. if collisions are all good after merge then disregard
+        let nail_transform1 = model_transform.times(Mat4.translation(6, 48, 4)).times(Mat4.scale(1/3, 1/3, 2));
+        let nail1 = new PolyActor(this, this.shapes.nail, this.materials.iron, nail_transform1, 1, bounce_sound, 10, cube_vertices);
+        let nail_transform2 = model_transform.times(Mat4.translation(12, 48, 4)).times(Mat4.scale(1/3, 1/3, 2));
+        let nail2 = new PolyActor(this, this.shapes.nail, this.materials.iron, nail_transform2, 1, bounce_sound, 10, cube_vertices);
+        let nail_transform3 = model_transform.times(Mat4.translation(18, 48, 4)).times(Mat4.scale(1/3, 1/3, 2));
+        let nail3 = new PolyActor(this, this.shapes.nail, this.materials.iron, nail_transform3, 1, bounce_sound, 10, cube_vertices);
+        let nail_transform4 = model_transform.times(Mat4.translation(9, 42, 4)).times(Mat4.scale(1/3, 1/3, 2));
+        let nail4 = new PolyActor(this, this.shapes.nail, this.materials.iron, nail_transform4, 1, bounce_sound, 10, cube_vertices);
+        let nail_transform5 = model_transform.times(Mat4.translation(15, 42, 4)).times(Mat4.scale(1/3, 1/3, 2));
+        let nail5 = new PolyActor(this, this.shapes.nail, this.materials.iron, nail_transform5, 1, bounce_sound, 10, cube_vertices);
+        let nail_transform6 = model_transform.times(Mat4.translation(21, 42, 4)).times(Mat4.scale(1/3, 1/3, 2));
+        let nail6 = new PolyActor(this, this.shapes.nail, this.materials.iron, nail_transform6, 1, bounce_sound, 10, cube_vertices);
+        let nail_transform7 = model_transform.times(Mat4.translation(6, 36, 4)).times(Mat4.scale(1/3, 1/3, 2));
+        let nail7 = new PolyActor(this, this.shapes.nail, this.materials.iron, nail_transform7, 1, bounce_sound, 10, cube_vertices);
+        let nail_transform8 = model_transform.times(Mat4.translation(12, 36, 4)).times(Mat4.scale(1/3, 1/3, 2));
+        let nail8 = new PolyActor(this, this.shapes.nail, this.materials.iron, nail_transform8, 1, bounce_sound, 10, cube_vertices);
+        let nail_transform9 = model_transform.times(Mat4.translation(18, 36, 4)).times(Mat4.scale(1/3, 1/3, 2));
+        let nail9 = new PolyActor(this, this.shapes.nail, this.materials.iron, nail_transform9, 1, bounce_sound, 10, cube_vertices);
 
-            }
-        }
+        // nails right side
+        let nail_transform10 = model_transform.times(Mat4.translation(46, 48, 4)).times(Mat4.scale(1/3, 1/3, 2));
+        let nail10 = new PolyActor(this, this.shapes.nail, this.materials.iron, nail_transform10, 1, bounce_sound, 10, cube_vertices);
+        let nail_transform11 = model_transform.times(Mat4.translation(52, 48, 4)).times(Mat4.scale(1/3, 1/3, 2));
+        let nail11 = new PolyActor(this, this.shapes.nail, this.materials.iron, nail_transform11, 1, bounce_sound, 10, cube_vertices);
+        let nail_transform12 = model_transform.times(Mat4.translation(58, 48, 4)).times(Mat4.scale(1/3, 1/3, 2));
+        let nail12 = new PolyActor(this, this.shapes.nail, this.materials.iron, nail_transform12, 1, bounce_sound, 10, cube_vertices);
+        let nail_transform13 = model_transform.times(Mat4.translation(43, 42, 4)).times(Mat4.scale(1/3, 1/3, 2));
+        let nail13 = new PolyActor(this, this.shapes.nail, this.materials.iron, nail_transform13, 1, bounce_sound, 10, cube_vertices);
+        let nail_transform14 = model_transform.times(Mat4.translation(49, 42, 4)).times(Mat4.scale(1/3, 1/3, 2));
+        let nail14 = new PolyActor(this, this.shapes.nail, this.materials.iron, nail_transform14, 1, bounce_sound, 10, cube_vertices);
+        let nail_transform15 = model_transform.times(Mat4.translation(55, 42, 4)).times(Mat4.scale(1/3, 1/3, 2));
+        let nail15 = new PolyActor(this, this.shapes.nail, this.materials.iron, nail_transform15, 1, bounce_sound, 10, cube_vertices);
+        let nail_transform16 = model_transform.times(Mat4.translation(46, 36, 4)).times(Mat4.scale(1/3, 1/3, 2));
+        let nail16 = new PolyActor(this, this.shapes.nail, this.materials.iron, nail_transform16, 1, bounce_sound, 10, cube_vertices);
+        let nail_transform17 = model_transform.times(Mat4.translation(52, 36, 4)).times(Mat4.scale(1/3, 1/3, 2));
+        let nail17 = new PolyActor(this, this.shapes.nail, this.materials.iron, nail_transform17, 1, bounce_sound, 10, cube_vertices);
+        let nail_transform18 = model_transform.times(Mat4.translation(58, 36, 4)).times(Mat4.scale(1/3, 1/3, 2));
+        let nail18 = new PolyActor(this, this.shapes.nail, this.materials.iron, nail_transform18, 1, bounce_sound, 10, cube_vertices);
+
+        this.bodies.push(nail1, nail2, nail3, nail4, nail5, nail6, nail7, nail8, nail9, nail10, nail11, nail12, nail13, nail14, nail15, nail16, nail17, nail18);
+
+        // mushroom placement
+        let mushroom_transform1 = model_transform.times(Mat4.translation(15, 58, 4));
+        let mushroom1 = new PolyActor(this, this.shapes.mushroom, this.materials.rusty_metal, mushroom_transform1, 0.8, mushroom_bounce_sound, 50, cube_vertices);
+        let mushroom_transform2 = model_transform.times(Mat4.translation(49, 58, 4));
+        let mushroom2 = new PolyActor(this, this.shapes.mushroom, this.materials.rusty_metal, mushroom_transform2, 0.8, mushroom_bounce_sound, 50, cube_vertices);
+        let mushroom_transform3 = model_transform.times(Mat4.translation(20, 20, 4));
+        let mushroom3 = new PolyActor(this, this.shapes.mushroom, this.materials.rusty_metal, mushroom_transform3, 0.8, mushroom_bounce_sound, 50, cube_vertices);
+        let mushroom_transform4 = model_transform.times(Mat4.translation(44, 20, 4));
+        let mushroom4 = new PolyActor(this, this.shapes.mushroom, this.materials.rusty_metal, mushroom_transform4, 0.8, mushroom_bounce_sound, 50, cube_vertices);
+        
+        this.bodies.push(mushroom1, mushroom2, mushroom3, mushroom4);
+
+        // bouncer placement
+        let bouncer_transform1 = model_transform.times(Mat4.translation(21, 64, 4)).times(Mat4.scale(1.5, 1.5, 1));
+        let bouncer1 = new PolyActor(this, this.shapes.bouncer, this.materials.rusty_metal2, bouncer_transform1, 1.1, bouncer_sound, 100, cube_vertices);
+        let bouncer_transform2 = model_transform.times(Mat4.translation(43, 64, 4)).times(Mat4.scale(1.5, 1.5, 1));
+        let bouncer2 = new PolyActor(this, this.shapes.bouncer, this.materials.rusty_metal2, bouncer_transform2, 1.1, bouncer_sound, 100, cube_vertices);
+        let bouncer_transform3 = model_transform.times(Mat4.translation(15, 24, 4)).times(Mat4.scale(1.5, 1.5, 1));
+        let bouncer3 = new PolyActor(this, this.shapes.bouncer, this.materials.rusty_metal2, bouncer_transform3, 1.1, bouncer_sound, 100, cube_vertices);
+        let bouncer_transform4 = model_transform.times(Mat4.translation(49, 24, 4)).times(Mat4.scale(1.5, 1.5, 1));
+        let bouncer4 = new PolyActor(this, this.shapes.bouncer, this.materials.rusty_metal2, bouncer_transform4, 1.1, bouncer_sound, 100, cube_vertices);
+
+        this.bodies.push(bouncer1, bouncer2, bouncer3, bouncer4);
+
+        // multiball placement
+        // TODO: replace cube with multiball shape
+        let multiball_transform1 = model_transform.times(Mat4.translation(8, 56, 5)).times(Mat4.scale(1.5, 1.5, 1.5));
+        let multiball1 = new PolyActor(this, this.shapes.diamond, this.materials.glow_yellow, multiball_transform1, 1, who_riff_1, 50, cube_vertices);
+        let multiball_transform2 = model_transform.times(Mat4.translation(56, 56, 5)).times(Mat4.scale(1.5, 1.5, 1.5));
+        let multiball2 = new PolyActor(this, this.shapes.diamond, this.materials.glow_yellow, multiball_transform2, 1, who_riff_1, 50, cube_vertices);
+
+        this.bodies.push(multiball1, multiball2);
+
+        // 3-ball placement
+        let three_ball_transform1 = model_transform.times(Mat4.translation(6, 78, 5)).times(Mat4.scale(2, 0.1, 2));
+        let three_ball1 = new PolyActor(this, this.shapes.cube, this.materials.elton_john, three_ball_transform1, 1, three_ball_sound, 50, cube_vertices);
+        let three_ball_transform2 = model_transform.times(Mat4.translation(12, 78, 5)).times(Mat4.scale(2, 0.1, 2));
+        let three_ball2 = new PolyActor(this, this.shapes.cube, this.materials.tommy, three_ball_transform2, 1, three_ball_sound, 50, cube_vertices);
+        let three_ball_transform3 = model_transform.times(Mat4.translation(18, 78, 5)).times(Mat4.scale(2, 0.1, 2));
+        let three_ball3 = new PolyActor(this, this.shapes.cube, this.materials.tina_turner, three_ball_transform3, 1, three_ball_sound, 50, cube_vertices);
+
+        this.bodies.push(three_ball1, three_ball2, three_ball3);         
+
 
     }
 
@@ -970,7 +1066,7 @@ export class PinballWorld extends Simulation {
 
 
         if (this.ball_focus && this.camera_focus!=null) 
-        program_state.set_camera(Mat4.inverse(this.camera_focus.drawn_location.times(Mat4.translation(0,0,20))));
+        program_state.set_camera(Mat4.inverse(this.camera_focus.drawn_location.times(Mat4.translation(0,0,40))));
         else program_state.set_camera(this.initial_camera_location);
 
 
