@@ -983,23 +983,23 @@ export class PinballWorld extends Simulation {
             this.start_game()
         });
         this.new_line();
-        this.key_triggered_button("Pull spring back more", ["t"], () => {
+        this.key_triggered_button("Pull spring back more", ["m"], () => {
             spring_pull_up_sound.pause(); // pause and reset so you can click button rapidly
             spring_pull_up_sound.currentTime = 0;
             spring_pull_up_sound.play();
             this.launch_speed=Math.min(10,this.launch_speed+1);
         });
-        this.key_triggered_button("Pull spring back less", ["y"], () => {
+        this.key_triggered_button("Pull spring back less", ["n"], () => {
             spring_pull_down_sound.pause(); // pause and reset so you can click button rapidly
             spring_pull_down_sound.currentTime = 0;
             spring_pull_down_sound.play();
             this.launch_speed=Math.max(0,this.launch_speed-1);
         });
-        this.key_triggered_button("Left Flipper", ["n"], () => {
+        this.key_triggered_button("Left Flipper", ["l"], () => {
             this.left_flipper_cooldown=12;
             flipper_sound_left.play();
         });
-        this.key_triggered_button("Right Flipper", ["m"], () => {
+        this.key_triggered_button("Right Flipper", [";"], () => {
             this.right_flipper_cooldown=12;
             flipper_sound_right.play();
         });
