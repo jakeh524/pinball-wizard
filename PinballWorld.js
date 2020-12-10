@@ -548,7 +548,7 @@ export class PinballWorld extends Simulation {
             //machine_table: new Shape_From_File("assets/machine-rebuilt.obj"),
             left_flipper: new Shape_From_File("assets/flip-left.obj"),
             right_flipper: new Shape_From_File("assets/flip-right.obj"),
-            nail: new Shape_From_File("assets/nail_radius.obj"),
+            nail: new Shape_From_File("assets/nail_flip.obj"),
             bouncer: new Shape_From_File("assets/bouncer_radius.obj"),
             mushroom: new Shape_From_File("assets/mushroom.obj"),
             diamond: new Shape_From_File("assets/diamond.obj"),
@@ -831,43 +831,43 @@ export class PinballWorld extends Simulation {
 
         // nails left side
         // TODO: Figure out nails in blender. if collisions are all good after merge then disregard
-        let nail_transform1 = model_transform.times(Mat4.translation(6, 48, 4)).times(Mat4.scale(1/3, 1/3, 2));
+        let nail_transform1 = model_transform.times(Mat4.translation(6, 48, 4));
         let nail1 = new PolyActor(this, this.shapes.nail, this.materials.iron, nail_transform1, 1, bounce_sound, 10, cube_vertices);
-        let nail_transform2 = model_transform.times(Mat4.translation(12, 48, 4)).times(Mat4.scale(1/3, 1/3, 2));
+        let nail_transform2 = model_transform.times(Mat4.translation(12, 48, 4));
         let nail2 = new PolyActor(this, this.shapes.nail, this.materials.iron, nail_transform2, 1, bounce_sound, 10, cube_vertices);
-        let nail_transform3 = model_transform.times(Mat4.translation(18, 48, 4)).times(Mat4.scale(1/3, 1/3, 2));
+        let nail_transform3 = model_transform.times(Mat4.translation(18, 48, 4));
         let nail3 = new PolyActor(this, this.shapes.nail, this.materials.iron, nail_transform3, 1, bounce_sound, 10, cube_vertices);
-        let nail_transform4 = model_transform.times(Mat4.translation(9, 42, 4)).times(Mat4.scale(1/3, 1/3, 2));
+        let nail_transform4 = model_transform.times(Mat4.translation(9, 42, 4));
         let nail4 = new PolyActor(this, this.shapes.nail, this.materials.iron, nail_transform4, 1, bounce_sound, 10, cube_vertices);
-        let nail_transform5 = model_transform.times(Mat4.translation(15, 42, 4)).times(Mat4.scale(1/3, 1/3, 2));
+        let nail_transform5 = model_transform.times(Mat4.translation(15, 42, 4));
         let nail5 = new PolyActor(this, this.shapes.nail, this.materials.iron, nail_transform5, 1, bounce_sound, 10, cube_vertices);
-        let nail_transform6 = model_transform.times(Mat4.translation(21, 42, 4)).times(Mat4.scale(1/3, 1/3, 2));
+        let nail_transform6 = model_transform.times(Mat4.translation(21, 42, 4));
         let nail6 = new PolyActor(this, this.shapes.nail, this.materials.iron, nail_transform6, 1, bounce_sound, 10, cube_vertices);
-        let nail_transform7 = model_transform.times(Mat4.translation(6, 36, 4)).times(Mat4.scale(1/3, 1/3, 2));
+        let nail_transform7 = model_transform.times(Mat4.translation(6, 36, 4));
         let nail7 = new PolyActor(this, this.shapes.nail, this.materials.iron, nail_transform7, 1, bounce_sound, 10, cube_vertices);
-        let nail_transform8 = model_transform.times(Mat4.translation(12, 36, 4)).times(Mat4.scale(1/3, 1/3, 2));
+        let nail_transform8 = model_transform.times(Mat4.translation(12, 36, 4));
         let nail8 = new PolyActor(this, this.shapes.nail, this.materials.iron, nail_transform8, 1, bounce_sound, 10, cube_vertices);
-        let nail_transform9 = model_transform.times(Mat4.translation(18, 36, 4)).times(Mat4.scale(1/3, 1/3, 2));
+        let nail_transform9 = model_transform.times(Mat4.translation(18, 36, 4));
         let nail9 = new PolyActor(this, this.shapes.nail, this.materials.iron, nail_transform9, 1, bounce_sound, 10, cube_vertices);
 
         // nails right side
-        let nail_transform10 = model_transform.times(Mat4.translation(46, 48, 4)).times(Mat4.scale(1/3, 1/3, 2));
+        let nail_transform10 = model_transform.times(Mat4.translation(46, 48, 4));
         let nail10 = new PolyActor(this, this.shapes.nail, this.materials.iron, nail_transform10, 1, bounce_sound, 10, cube_vertices);
-        let nail_transform11 = model_transform.times(Mat4.translation(52, 48, 4)).times(Mat4.scale(1/3, 1/3, 2));
+        let nail_transform11 = model_transform.times(Mat4.translation(52, 48, 4));
         let nail11 = new PolyActor(this, this.shapes.nail, this.materials.iron, nail_transform11, 1, bounce_sound, 10, cube_vertices);
-        let nail_transform12 = model_transform.times(Mat4.translation(58, 48, 4)).times(Mat4.scale(1/3, 1/3, 2));
+        let nail_transform12 = model_transform.times(Mat4.translation(58, 48, 4));
         let nail12 = new PolyActor(this, this.shapes.nail, this.materials.iron, nail_transform12, 1, bounce_sound, 10, cube_vertices);
-        let nail_transform13 = model_transform.times(Mat4.translation(43, 42, 4)).times(Mat4.scale(1/3, 1/3, 2));
+        let nail_transform13 = model_transform.times(Mat4.translation(43, 42, 4));
         let nail13 = new PolyActor(this, this.shapes.nail, this.materials.iron, nail_transform13, 1, bounce_sound, 10, cube_vertices);
-        let nail_transform14 = model_transform.times(Mat4.translation(49, 42, 4)).times(Mat4.scale(1/3, 1/3, 2));
+        let nail_transform14 = model_transform.times(Mat4.translation(49, 42, 4));
         let nail14 = new PolyActor(this, this.shapes.nail, this.materials.iron, nail_transform14, 1, bounce_sound, 10, cube_vertices);
-        let nail_transform15 = model_transform.times(Mat4.translation(55, 42, 4)).times(Mat4.scale(1/3, 1/3, 2));
+        let nail_transform15 = model_transform.times(Mat4.translation(55, 42, 4));
         let nail15 = new PolyActor(this, this.shapes.nail, this.materials.iron, nail_transform15, 1, bounce_sound, 10, cube_vertices);
-        let nail_transform16 = model_transform.times(Mat4.translation(46, 36, 4)).times(Mat4.scale(1/3, 1/3, 2));
+        let nail_transform16 = model_transform.times(Mat4.translation(46, 36, 4));
         let nail16 = new PolyActor(this, this.shapes.nail, this.materials.iron, nail_transform16, 1, bounce_sound, 10, cube_vertices);
-        let nail_transform17 = model_transform.times(Mat4.translation(52, 36, 4)).times(Mat4.scale(1/3, 1/3, 2));
+        let nail_transform17 = model_transform.times(Mat4.translation(52, 36, 4));
         let nail17 = new PolyActor(this, this.shapes.nail, this.materials.iron, nail_transform17, 1, bounce_sound, 10, cube_vertices);
-        let nail_transform18 = model_transform.times(Mat4.translation(58, 36, 4)).times(Mat4.scale(1/3, 1/3, 2));
+        let nail_transform18 = model_transform.times(Mat4.translation(58, 36, 4));
         let nail18 = new PolyActor(this, this.shapes.nail, this.materials.iron, nail_transform18, 1, bounce_sound, 10, cube_vertices);
 
         this.bodies.push(nail1, nail2, nail3, nail4, nail5, nail6, nail7, nail8, nail9, nail10, nail11, nail12, nail13, nail14, nail15, nail16, nail17, nail18);
