@@ -6,11 +6,11 @@ const {
     Vector, Vector3, vec, vec3, vec4, color, hex_color, Shader, Matrix, Mat4, Light, Shape, Material, Scene, Texture
 } = tiny;
 
-const {Cube, Square, Axis_Arrows, Textured_Phong} = defs
+const {Cube, Square, Triangle, Textured_Phong} = defs
 
 
 let score = 0;
-var bounce_sound, launch_sound, lost_ball_sound, flipper_sound_left, flipper_sound_right, game_over_sound, start_game_sound, spring_pull_up_sound, spring_pull_down_sound, insert_quarter_sound;
+var bounce_sound, launch_sound, lost_ball_sound, flipper_sound_left, flipper_sound_right, game_over_sound, start_game_sound, spring_pull_up_sound, spring_pull_down_sound, insert_quarter_sound, change_camera_sound, score_sound;
 
 
 
@@ -522,7 +522,7 @@ export class PinballWorld extends Simulation {
         //Camera-related settings
         this.ball_focus=false;
         // camera location
-        this.initial_camera_location = Mat4.look_at(vec3(35, -55, 95), vec3(35, 55, 0), vec3(0, 1, 1));
+        this.initial_camera_location = Mat4.look_at(vec3(35, -55, 100), vec3(35, 55, 0), vec3(0, 1, 1));
         //this.initial_camera_location = Mat4.look_at(vec3(15, 25, 90), vec3(15, 25, 0), vec3(0, 1, 1));
         this.camera_focus=null;
         this.start_game_flag == false;
@@ -539,7 +539,7 @@ export class PinballWorld extends Simulation {
             cube: new defs.Cube(),
             circle: new defs.Regular_2D_Polygon(1, 15),
             cylinder: new defs.Capped_Cylinder(10,10,[0,150]),
-            arrows: new defs.Axis_Arrows(),
+            arrow_head: new Arrow_Head(),
             text: new Text_Line(15),
             text_long: new Text_Line(35),
             text_longer: new Text_Line(55),
@@ -549,8 +549,8 @@ export class PinballWorld extends Simulation {
             //machine_table: new Shape_From_File("assets/machine-rebuilt.obj"),
             left_flipper: new Shape_From_File("assets/flip-left.obj"),
             right_flipper: new Shape_From_File("assets/flip-right.obj"),
-            nail: new Shape_From_File("assets/nail5.obj"),
-            bouncer: new Shape_From_File("assets/bouncer.obj"),
+            nail: new Shape_From_File("assets/nail_flip.obj"),
+            bouncer: new Shape_From_File("assets/bouncer_flip.obj"),
             mushroom: new Shape_From_File("assets/mushroom.obj"),
             background_floor: new defs.Cube(),
             background_wall: new defs.Cube(),
@@ -583,6 +583,9 @@ export class PinballWorld extends Simulation {
 
             black: new Material(new defs.Phong_Shader(),
                 {color: hex_color("#000000"), ambient: 0.5, diffusivity: 0.5, specularity: 0.5}),
+
+            white: new Material(new defs.Phong_Shader(),
+                {color: hex_color("#ffffff"), ambient: 1, diffusivity: 0.5, specularity: 0.5}),                
 
             rusty_metal: new Material(new Textured_Phong(), { // use for obstacles
                 color: hex_color("#000000"),
@@ -681,8 +684,11 @@ export class PinballWorld extends Simulation {
         spring_pull_up_sound = new Audio("assets/spring_pull_up_sound.mp3");
         spring_pull_down_sound = new Audio("assets/spring_pull_down_sound.mp3");
         insert_quarter_sound = new Audio("assets/insert_quarter_sound.mp3");
+        change_camera_sound = new Audio("assets/swoosh.mp3");
+        score_sound = new Audio("assets/score_sound.mp3");
 
-        this.has_sound_played_flag = false; //used to make sure game over sound doesn't repeat because it is inside display function
+        
+        this.has_sound_played_flag = false; // used to make sure game over sound doesn't repeat because it is inside display function
         this.show_start_screen_flag = true; // show starting text the first time you play
 
 
@@ -792,11 +798,13 @@ export class PinballWorld extends Simulation {
 
         //Obstacle Building
         //let test_verticies = cube_vertices[0] = 
-        let test_transform = model_transform.times(Mat4.translation(20, 20, 4)).times(Mat4.rotation(Math.PI/2, 1, 0, 0));
+        let test_transform = model_transform.times(Mat4.translation(20, 20, 4));
         let test_mushroom = new PolyActor(this, this.shapes.mushroom, this.materials.rusty_metal, test_transform, 1, bounce_sound, 25, cube_vertices);
-        let test_transform2 = model_transform.times(Mat4.translation(25, 20, 4)).times(Mat4.rotation(Math.PI/2, 1, 0, 0));
+        let test_transform2 = model_transform.times(Mat4.translation(25, 20, 4));
         let test_bouncer = new PolyActor(this, this.shapes.bouncer, this.materials.rusty_metal2, test_transform2, 1.2, bounce_sound, 25, cube_vertices);
-        this.bodies.push(test_mushroom, test_bouncer);
+        let test_transform3 = model_transform.times(Mat4.translation(30, 20, 4));
+        let test_nail = new PolyActor(this, this.shapes.nail, this.materials.iron, test_transform3, 1, bounce_sound, 25, cube_vertices);
+        this.bodies.push(test_mushroom, test_bouncer, test_nail);
 
         var i;
         var j; 
@@ -831,6 +839,12 @@ export class PinballWorld extends Simulation {
                 if (vel_adjustments!= null)
                 {
                     score += this.bodies[i].object_score_value; // update score. i think this is where collisions are detected
+                    if(this.bodies[i].object_score_value > 0)
+                    {
+                        score_sound.pause(); // pause and reset so you can click button rapidly
+                        score_sound.currentTime = 0;
+                        score_sound.play();
+                    }
                     if(this.bodies[i].sound_effect != 0)
                     {
                         this.bodies[i].sound_effect.play();
@@ -895,7 +909,11 @@ export class PinballWorld extends Simulation {
         });
         this.new_line();
         this.key_triggered_button("Launch Pinball", ["Enter"], () => {this.launch_ball()});
-        this.key_triggered_button("Switch camera", ["c"], () => this.ball_focus = !this.ball_focus);
+        this.key_triggered_button("Switch camera", ["c"], () => 
+        {
+            change_camera_sound.play();
+            this.ball_focus = !this.ball_focus;
+        });
         //this.new_line();
 
     }
@@ -974,13 +992,19 @@ export class PinballWorld extends Simulation {
         
 
         // loading spring handler
-        let spring_base_transform = model_transform.times(Mat4.translation(68, -2.5, 4)).times(Mat4.scale(2, 1, 2)).times(Mat4.rotation(Math.PI/2, 1, 0, 0));
+        let spring_base_transform = model_transform.times(Mat4.translation(68, -2.5, 4)).times(Mat4.scale(2, 0.75, 2)).times(Mat4.rotation(Math.PI/2, 1, 0, 0));
         for(var j = 0; j < this.launch_speed; j++)
         {
             this.shapes.cylinder.draw(context, program_state, spring_base_transform, this.materials.rusty_metal2);
-            spring_base_transform = spring_base_transform.times(Mat4.translation(0, 0, 1));
-
+            spring_base_transform = spring_base_transform.times(Mat4.translation(0, 0, 0.75));
+            let arrow_body_transform = model_transform.times(Mat4.translation(68, 8 + this.launch_speed, 4)).times(Mat4.scale(0.25, 1 + this.launch_speed, 0.25));
+            this.shapes.square.draw(context, program_state, arrow_body_transform, this.materials.white);
+            let arrow_head_transform = model_transform.times(Mat4.translation(68, 8 + 2*this.launch_speed, 4));
+            this.shapes.arrow_head.draw(context, program_state, arrow_head_transform, this.materials.white);
         }
+
+
+
 
 
         // scoreboard drawing and transformation
@@ -1107,15 +1131,17 @@ export class PinballWorld extends Simulation {
 
 
 
-
-
-
-
-
-
-
-
-
+const Arrow_Head = defs.Arrow =
+    class Arrow extends Shape {
+        // An axis set with arrows, made out of a lot of various primitives.
+        constructor() {
+            super("position", "normal", "texture_coord");
+            const triangle_transformR = Mat4.translation(0, 0, 0);
+            const triangle_transformL = Mat4.translation(0, 0, 0).times(Mat4.rotation(Math.PI/2, 0, 0, 1));
+            defs.Triangle.insert_transformed_copy_into(this, [], triangle_transformR);
+            defs.Triangle.insert_transformed_copy_into(this, [], triangle_transformL);
+        }
+    }
 
 
 
