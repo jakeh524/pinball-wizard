@@ -59,19 +59,202 @@ class RoundActor extends Actor
 {
     constructor(world,shape,material,model_transform,springiness,sound_effect,object_score_value,radius)
     {
+        //let radius_scale=model_transform.times(Mat4.scale(radius,1,radius))
          super(world,shape,material,model_transform,springiness,sound_effect,object_score_value)
          this.radius=radius;
    
     }
- check_if_ball_inside_and_provide_vel_changes(ball)
+ check_if_ball_inside_and_provide_vel_changes(ball,dt)
   {
-      return null;
-  }
+      if (this==ball) return null;
+      var d = this.distance(ball);
 
+        var my_overlap = d - this.radius - ball.radius;
+        var theta_travel = 0;
+        var balls_overlap = false;
+        var ball_range = this.radius + ball.radius + (Math.abs(ball.linear_velocity[0]) + Math.abs(ball.linear_velocity[1]))/10;
+
+        if ( ball_range >= d) {   // vague inaccurate distance check 
+           // console.log("Ball range=" + ball_range + " d=" + d + ", so we will check for collision.");
+        }
+        else {
+           // console.log("Balls out of range.  r1+r2=" + (this.radius + ball.radius) + " d=" + d + ", so no need to check for collision.");
+            return null;  // no crossing
+        }
+
+        var mtd = d-(this.radius + ball.radius);   // minimum distance we need to move to prevent overlaps
+        if(mtd<0) {
+          //  console.log("Objects currently overlap.")
+            balls_overlap = true;
+        }
+        else{
+          //  console.log("Objects do not overlap");
+            balls_overlap = false;
+        }
+            
+            
+        // Are the objects approaching each other?
+        // If we have objcts A and B, C is vector between them, V is velocity, then if C (dot) V > 0 they approach.
+        // see https://www.gamasutrball.com/view/feature/131424/pool_hall_lessons_fast_accurate_.php
+        // var is_approaching =  (this.center[0] - ball.center[0]) * ball.linear_velocity[0] + (this.center[1] - ball.center[1]) * ball.linear_velocity[1];
+
+        // Are the objects getting closer?  Note if they are overlapping it doesn't matter.
+        var is_approaching =  (this.center[0] - ball.center[0]) * (ball.linear_velocity[0]-this.linear_velocity[0]) + (this.center[1] - ball.center[1]) * (ball.linear_velocity[1]-this.linear_velocity[1]);
+
+        if (is_approaching < 0) {
+   //         console.log ("Objects are getting closer, distance = " + d);
+        }
+        else {
+   //         console.log("Objects are getting further apart, distance = " + d);
+        //    return false;
+        }
+
+        var nx = this.center[0] + ((this.linear_velocity[0]/10 - ball.linear_velocity[0])/10);
+        var ny = this.center[1] + ((this.linear_velocity[1]/10 - ball.linear_velocity[1])/10);
+        var nd1 = this.my_distance(this.center[0], this.center[1], ball.center[0], ball.center[1]);
+        var nd2 = this.my_distance(nx,ny, ball.center[0], ball.center[1]);
+
+        //console.log("nd1=" + nd1 + " nd2 = " + nd2);
+
+        var is_approaching_2 = false;
+        if (nd1 > nd2) is_approaching_2 = true;
+
+        is_approaching = is_approaching_2;
+
+        if (is_approaching) {
+           // console.log ("(2)Objects are getting closer, distance = " + d);
+        }
+        else {
+           // console.log("(2)Objects are getting further apart, distance = " + d);
+            if(balls_overlap) {}//console.log("However, we have already collided so that is ok.");
+            else {
+              //  console.log("If they have not collided yet, they probably won't.");
+                return null;
+            }
+        }
+
+        // Find velocities
+        var v1 = 0;  //   Math.sqrt(this.linear_velocity[0] * this.linear_velocity[0] + this.linear_velocity[1] *this.linear_velocity[1]);
+        var v2 = Math.sqrt(ball.linear_velocity[0] * ball.linear_velocity[0] + ball.linear_velocity[1] * ball.linear_velocity[1]);
+        //console.log("Target velocity V1=" + v1 + " Projectile velocity v2=" + v2);
+
+        //   var cvx = this.linear_velocity[0] + ball.linear_velocity[0];  // velocity of center of mass  ----- but it is not moving
+        // var cvy = this.linear_velocity[1] + ball.linear_velocity[1];
+
+        // find directions of travel as angles for both objects
+        // var theta1 = get_theta(this.linear_velocity[0], this.linear_velocity[1]);   -- not moving
+        //  var m1 = get_m(this.linear_velocity[0], this.linear_velocity[1]);   -- not moving
+        var pi = 3.14159265;
+
+        var theta_travel = this.get_theta(ball.linear_velocity[0], ball.linear_velocity[1]);  // was theta_2
+        var m_travel = this.get_m(ball.linear_velocity[0], ball.linear_velocity[1]);
+        var theta_tm = theta_travel + pi;  // this is the angle we use for the calculations
+        if(theta_tm <0)theta_tm = theta_tm + 2.*pi;
+        if(theta_tm>2.*pi) theta_tm = theta_tm - 2*pi;
+        var theta_tp = theta_travel + (pi/2.); // perpendicular angle from center to point of nearest approach
+        if(theta_tp>2*pi)theta_tp = theta_tp - 2*pi;
+      //  console.log("Ball theta travel=      " + theta_travel + " Slope m_travel=" + m_travel);
+      //  console.log("Ball theta travel minus=" + theta_tm + " theta perpendicular=" + theta_tp);
+
+        // find the collision point
+
+        var big_r = this.radius + ball.radius;
+
+        // we need the distance from the target to the path
+        // https://mathworld.wolfram.com/Point-LineDistance2-Dimensional.html
+
+        // 0 start 1 first point 2 second point on line
+
+        var x0=this.center[0];
+        var y0=this.center[1];
+        var x1=ball.center[0];
+        var y1=ball.center[1];
+        var x2=ball.center[0]+ball.linear_velocity[0];
+        var y2=ball.center[1]+ball.linear_velocity[1];
+
+        // Find the distance from point to a line
+
+        var d_line = ((x2-x1)*(y1-y0)-(x1-x0)*(y2-y1)) / Math.sqrt((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1))
+        if(d_line < 0)d_line = -d_line;
+
+        // See if we have a hit (collision path)
+        //console.log("Distance from circle to travel path d_line=" + d_line + "  r1= " + this.radius + " r2= " + ball.radius);   
+
+        if(d_line <= (this.radius + ball.radius)) {
+          //  console.log("Hit.  d=" + d_line + "  r1= " + this.radius + " r2= " + ball.radius);   
+        }
+        else {
+           // console.log("Miss.  d=" + d_line + "  r1= " + this.radius + " r2= " + ball.radius);
+            return null; 
+        }
+
+        // find the third side of the triangle
+        var rr = this.radius + ball.radius;
+        var h = Math.sqrt((rr * rr) - (d_line * d_line))
+      //  console.log ("H = " + h + " distance along travel path to perpendicular from impact point.");
+
+        //  quick solution - this works pretty well
+
+        var theta_bouncer_to_ball = this.get_theta(ball.center[0]-this.center[0], ball.center[1]-this.center[1]);
+      //  console.log("Angle from bouncer to ball at initial position is " + theta_bouncer_to_ball);
+     //   console.log("Angle of travel theta_travel is " + theta_travel);
+        var theta_t = theta_travel + pi;
+        if (theta_t > 2*pi) theta_t = theta_t - 2*pi;
+      //  console.log("Inverse angle of travel theta_t is " + theta_t);
+        var theta_bounce = 2*theta_bouncer_to_ball - theta_t;
+      //  console.log("Bounce angle is " + theta_bounce);
+        
+
+         
+         
+
+      //  console.log("Ball vx = " + ball.linear_velocity[0] + " vy= " + ball.linear_velocity[1]);
+      //  console.log("Target vx = " + this.linear_velocity[0] + " vy= " + this.linear_velocity[1]);
+        return [v2 * Math.cos(theta_bounce),v2 * Math.sin(theta_bounce)]
+  }
+  distance(a){ // distance to actor a  
+        var d = (this.center[0] - a.center[0]) * (this.center[0] - a.center[0]) + (this.center[1] - a.center[1]) * (this.center[1] - a.center[1]);
+        var e = Math.sqrt(d);
+        return e;
+    }
+     get_m(x,y) {
+    if(x !=0)return y/x;
+    if(y>0) return 999.;
+    return -999.;
+}
+
+my_distance (x1,y1,x2,y2) {
+    var d = Math.sqrt((x1-x2)*(x1-x2)+(y1-y2)*(y1-y2));
+    return d;
+}
+get_theta(x,y) {
+    // see https://www.mathsisfun.com/polar-cartesian-coordinates.html
+    let pi = 3.14159265;
+    let pi2 = 2 * 3.14159265;
+    if (x != 0) {
+        let a = Math.atan(y/x);
+        if(x>0 && y>0){ // quadrant I
+           if(a>pi2)a -+ pi2;
+           return a;
+        }
+        if(x<0){  // quadrants II and III
+            a = a + pi;  
+            if(a>pi2)a -+ pi2;
+            return a;
+        }
+        a = a + 2 * pi;
+        if(a>pi2)a -+ pi2;
+        if(a>pi2)a -+ pi2;
+        return a;
+    }
+    if(y>0)return pi/2;
+    return 3*pi/2;
+}
   draw_corners(context,program_state)
   {
 
   }
+   
 }
 
 
@@ -109,24 +292,31 @@ class PolyActor extends Actor
   
   check_if_ball_inside_and_provide_vel_changes(ball,dt)
   {
+      let changed=false
       let i=0;
-
+      let vel_to_check=[ball.linear_velocity[0],ball.linear_velocity[1]]
       while (i<this.sides_list.length)
       {
           let adjustment=this.check_if_crossed_specific_side(dt,ball.center[0],ball.center[1],
-                         ball.linear_velocity[0],ball.linear_velocity[1],ball.radius,this.sides_list[i])
+                         vel_to_check[0],vel_to_check[1],ball.radius,this.sides_list[i])
 
 
           if (adjustment!=null)
           {
-            this.react_to_hit();
-            return adjustment;
+            vel_to_check=adjustment
+            changed=true
           } 
           
           i+=1;
       }
 
-      return null;
+      
+      if (changed) 
+      {
+          this.react_to_hit();
+      return vel_to_check;
+      }
+       else return null
   }
 
 
@@ -172,8 +362,24 @@ point_in_box(x,y,a,b,c,d) {
     // (a,b) and (c,d) are the ends of a line segment
     // testing if on the box tests if the point is on line segment
     // if we already know the point is on the line
-
-    if(
+    if(b==d)
+    {
+        if(
+        (x<=a) && (x>=c) ||
+        (x>=a) && (x<=c)
+        )
+        return true;
+    }
+    else if (a==c)
+    {
+        if  (
+           (y<=b) && (y>=d) ||
+           (y>=b) && (y<=d)
+        )
+    
+        return true;
+    }
+    else if(
         (
         (x<=a) && (x>=c) ||
         (x>=a) && (x<=c)
@@ -191,8 +397,8 @@ point_in_box(x,y,a,b,c,d) {
   {
       let ball_x=ball_center_x_pos
       let ball_y=ball_center_y_pos
-      let ball_vel_x=.1*velocity_x
-      let ball_vel_y=.1*velocity_y
+      let ball_vel_x=velocity_x
+      let ball_vel_y=velocity_y
  
       let ball_r=ball_radius;
       var is_vertical_path = false;
@@ -208,9 +414,9 @@ point_in_box(x,y,a,b,c,d) {
         if ( (side_r + 2*ball_r ) < d) {
             return;
         }
-*/
+        */
         // find velocity
-        var v = Math.sqrt(100*ball_vel_x * ball_vel_x+ 100*ball_vel_y * ball_vel_y);
+        var v = Math.sqrt(ball_vel_x * ball_vel_x+ ball_vel_y * ball_vel_y);
 
         // find theta_path, m_path, and b_path
         var theta_path = this.get_theta(ball_vel_x, ball_vel_y);
@@ -261,7 +467,7 @@ point_in_box(x,y,a,b,c,d) {
 
             if(m_path == m_wall) {
                 //console.log("No collision, wall and path are parallel.");
-                return false; // avoid errors
+                return null; // avoid errors
             }
             collision_x = (b_path - b_wall)/(-m_path + m_wall);
             collision_y = m_path * collision_x + b_path;
@@ -275,16 +481,17 @@ point_in_box(x,y,a,b,c,d) {
             var d2 = collision_y - ball_y;
             var d3 = d1*d1 + d2*d2;
             var distance_to_collision = Math.sqrt(d3);
-            if (distance_to_collision>5) {          // must be within 5 units for a hit
+            /*
+            if (distance_to_collision>25) {          // must be within 5 units for a hit
                 return;
             }
-
+            */
             // Make sure the colliison point is on the wall segment
 
             if(!this.point_in_box(collision_x, collision_y, side[0][0], side[0][1], side[1][0], side[1][1]))
             {
       //          console.log("The collision point is not on the line segement.");
-                return;
+                return null;
             }
             //else console.log("The collision point IS on the line segement.");
 
@@ -348,10 +555,10 @@ class Flipper extends PolyActor
     {
 
         
-        let flipper_coords=[vec4(-1.218709683418274, 0.8929912686347961, 0.375160526148974895,1),
-        vec4(1.118709683418274, 0.5929912686347961, 0.365160526148974895,1),
-        vec4(1.118709683418274, 0.5929912686347961, 0.065160526148974895,1),
-        vec4(-1.218709683418274, 0.8929912686347961, 0.075160526148974895,1)];
+        let flipper_coords=[vec4(-1.6709683418274, 0.8929912686347961, 0.575160526148974895,1),
+        vec4(1.118709683418274, 0.5929912686347961, 0.565160526148974895,1),
+        vec4(1.118709683418274, 0.5929912686347961, -0.265160526148974895,1),
+        vec4(-1.68709683418274, 0.8929912686347961, -0.275160526148974895,1)];
         
         let model_transform=Mat4.identity();
         let flip_start_mat=model_transform.times(Mat4.translation((world.board_right-7)/2,12,4))
@@ -376,10 +583,10 @@ class Flipper extends PolyActor
         this.flip_max=15;
         this.original_mat=rest_transform;
 
-        this.flipper_coords_access=[vec4(-1.218709683418274, 0.8929912686347961, 0.375160526148974895,1),
-                                    vec4(1.118709683418274, 0.5929912686347961, 0.365160526148974895,1),
-                                    vec4(1.118709683418274, 0.5929912686347961, 0.065160526148974895,1),
-                                   vec4(-1.218709683418274, 0.8929912686347961, 0.075160526148974895,1)];
+        this.flipper_coords_access=[vec4(-1.9709683418274, 0.8929912686347961, 0.175160526148974895,1),
+        vec4(1.118709683418274, 0.5929912686347961, 0.165160526148974895,1),
+        vec4(1.118709683418274, 0.5929912686347961, -0.265160526148974895,1),
+        vec4(-1.98709683418274, 0.8929912686347961, -0.275160526148974895,1)];;
     }
     doSomething()
     {
@@ -478,10 +685,10 @@ class Pinball extends RoundActor
 {
     constructor(world, width)
     {
-
-        let model_transform=Mat4.identity().times(Mat4.translation(width-2,5,4)).times(Mat4.scale(.6,.6,.6))
         
-        super(world, world.shapes.sphere,world.materials.iron,model_transform,1,0,0,.6)
+        let model_transform=Mat4.identity().times(Mat4.translation(width-2,5,4)).times(Mat4.scale(1,1,1))
+        
+        super(world, world.shapes.sphere,world.materials.iron,model_transform,1,0,0,1)
     
         this.launched=false;
         
@@ -531,7 +738,7 @@ class Pinball extends RoundActor
 
     get_launched()
     {
-        this.change_velocities(0,6*this.world.launch_speed+Math.random(0,1))
+        this.change_velocities(3,.18*this.world.launch_speed)
         this.launched=true;
         this.world.camera_focus=this;
     }
@@ -539,8 +746,8 @@ class Pinball extends RoundActor
     apply_gravity(dt)
     {
        
-        let gravity=12;
-        this.linear_velocity[1]-=gravity*dt;
+        let gravity=.001;
+        this.linear_velocity[1]-=gravity;
       
 
     }
@@ -602,7 +809,7 @@ export class PinballWorld extends Simulation {
 
 
         //Animation-related settings
-        this.time_scale/=800;
+        this.time_scale/=1500;
 
 
 //         //Texture Options
@@ -611,7 +818,7 @@ export class PinballWorld extends Simulation {
 
 
         this.hit_all_three_count=0;
-        
+        this.pinballs=[]
         
         this.left_flipper_cooldown=0;
         this.right_flipper_cooldown=0;
@@ -701,7 +908,7 @@ export class PinballWorld extends Simulation {
 
         //Initial Game Settings
       
-        this.multiball_cooldown=0;
+        this.multiball_cooldown=50000;
         this.balls_remaining=0;
         this.active_balls=0;
 
@@ -779,6 +986,7 @@ export class PinballWorld extends Simulation {
         let second_hit_all_three_transform=model_transform.times(Mat4.translation(12,40,4))
         let third_hit_all_three_transform=model_transform.times(Mat4.translation(12,50,4))
 
+        let bouncer_rot_transform=model_transform.times(Mat4.rotation(Math.PI/2,1,0,0))
 
         this.bodies=[new PolyActor(this,this.shapes.cube, this.materials.red_steel,left_transform,1,bounce_sound,0,cube_vertices),
            new PolyActor(this,this.shapes.cube, this.materials.red_steel,right_transform,1,bounce_sound,0,cube_vertices),
@@ -792,18 +1000,32 @@ export class PinballWorld extends Simulation {
            new PolyActor(this,this.shapes.cube, this.materials.red_steel,right_flipper_side,1,bounce_sound,0,cube_vertices),
            new PolyActor(this,this.shapes.cube, this.materials.red_steel,left_flipper_side,1,bounce_sound,0,cube_vertices),
             //new PolyActor(this,this.shapes.left_flipper, this.materials.stars,Mat4.identity(),1,0,0,flipper_vertices),
-           new MultiballBonus(this,Mat4.identity().times(Mat4.translation(30,50,4)),cube_vertices)
-            
+           new MultiballBonus(this,Mat4.identity().times(Mat4.translation(30,50,4)),cube_vertices),
+           
 
             ]
+
+
+         this.obstacles=[...this.bodies]
+         
+
+
+
+
+
+
+
+            
           let first_of_three=new Hit_All_Three(this, first_hit_all_three_transform,cube_vertices)
           let second_of_three=new Hit_All_Three(this, second_hit_all_three_transform,cube_vertices)
           let third_of_three= new Hit_All_Three(this, third_hit_all_three_transform,cube_vertices)
           let left_flipper=new Flipper(this,false)
           let right_flipper=new Flipper(this, true)
           this.bodies.push(left_flipper);
-          this.bodies.push(right_flipper)
+          this.bodies.push(right_flipper);
           this.flippers=[left_flipper,right_flipper]
+          this.obstacles.push(left_flipper)
+          this.obstacles.push(right_flipper)
           //  new PolyActor(this,this.shapes.cube, this.materials.wall,bottom_transform,1,0,0),
             
           //  new PolyActor(this,this.shapes.cube, this.materials.wall,model_transform.times(Mat4.translation(5,5,4)),1,0,0,[[4,4],[4,6],[6,6],[6,4]])
@@ -811,14 +1033,16 @@ export class PinballWorld extends Simulation {
           //let test_mushroom = new Mushroom(this, test_transform, [[19,19], [19,21], [21,21], [21,19]]);
           
 
-          let test_mushroom = new PolyActor(this, this.shapes.mushroom, this.materials.rusty_metal, test_transform, 1, bounce_sound, 25, cube_vertices);
-          this.bodies.push(test_mushroom);
+          //let test_mushroom = new PolyActor(this, this.shapes.mushroom, this.materials.rusty_metal, test_transform, 1, bounce_sound, 25, cube_vertices);
+          //this.bodies.push(test_mushroom);
           this.trio=[first_of_three,second_of_three,third_of_three]
           this.bodies.push(first_of_three);
           this.bodies.push(second_of_three);
           this.bodies.push(third_of_three);
-       
- 
+          this.obstacles.push(first_of_three)
+          this.obstacles.push(second_of_three)
+          this.obstacles.push(third_of_three)
+          
         //Obstacle Building
 
         var i;
@@ -845,31 +1069,57 @@ export class PinballWorld extends Simulation {
     {
         
         var i;
-
-        for  (i=0; i<this.bodies.length;i++)
+        let final_adjustment=null
+        for  (i=0; i<this.obstacles.length;i++)
         {
-            if(this.bodies[i].center[1]!=4)
-            {
-                let vel_adjustments=this.bodies[i].check_if_ball_inside_and_provide_vel_changes(ball,dt);
+            
+                let vel_adjustments=this.obstacles[i].check_if_ball_inside_and_provide_vel_changes(ball,dt);
                 if (vel_adjustments!= null)
                 {
-                    this.score += this.bodies[i].object_score_value; // update score. i think this is where collisions are detected
-                    if(this.bodies[i].sound_effect != 0)
+                    this.score += this.obstacles[i].object_score_value; // update score. i think this is where collisions are detected
+                    if(this.obstacles[i].sound_effect != 0)
                     {
-                        this.bodies[i].sound_effect.play();
+                        this.obstacles[i].sound_effect.play();
                     }
                     
-                    return vel_adjustments;
+                    final_adjustment=vel_adjustments
                     
                 }
                 
+                
+        }
+        let check=false;
+        let j=0
+        while (j<this.pinballs.length)
+        {
+            if (check && this.pinballs[j].center[1]>5)
+            {
+                let vel_adjustments=this.pinballs[j].check_if_ball_inside_and_provide_vel_changes(ball,dt);
+                if (vel_adjustments!= null)
+                {
+                    this.score += this.pinballs[j].object_score_value; // update score. i think this is where collisions are detected
+                    if(this.pinballs[j].sound_effect != 0)
+                    {
+                        this.pinballs[j].sound_effect.play();
+                    }
+                    
+                    final_adjustment=vel_adjustments
+                    
+                }
             }
+            if (ball==this.pinballs[j]) 
+            {
+            check=true;
+            }
+            j++;
+        }
+    
 
                 
 
 
-        }
-      return null;
+        
+      return final_adjustment;
     }
 
 
@@ -883,7 +1133,7 @@ export class PinballWorld extends Simulation {
 
     end_game(program_state)
     {
-        console.log("GAME OVER");
+        //console.log("GAME OVER");
         //let game_over_camera_location = this.model_transform.times(Mat4.translation(500, 0, 0));
         
 
@@ -924,8 +1174,8 @@ export class PinballWorld extends Simulation {
         if (this.multiball_cooldown==0)
         this.balls_remaining -= 1;
         this.active_balls += 1;
-        console.log(this.balls_remaining);
-        console.log(this.active_balls);
+        //console.log(this.balls_remaining);
+        //console.log(this.active_balls);
         }
     }
 
@@ -937,6 +1187,7 @@ export class PinballWorld extends Simulation {
         }
         let new_pinball=new Pinball(this, this.board_right);
         this.bodies.push(new_pinball);
+        this.pinballs.push(new_pinball);
         this.ball_currently_in_launcher=new_pinball;
     }
 
@@ -959,7 +1210,7 @@ export class PinballWorld extends Simulation {
 
         // overhead light setup
         const light_position = vec4(35, 50, 100, 0);
-        program_state.lights = [new Light(light_position, color(1, 1, 1, 1), 10**3)];
+        program_state.lights = [new Light(light_position, color(1, 1, 1, 1), 10**4)];
 
         //const t = program_state.animation_time / 1000, dt = program_state.animation_delta_time / 1000;
         let model_transform=Mat4.identity();
@@ -1073,7 +1324,21 @@ export class PinballWorld extends Simulation {
             if (this.bodies[i].alive==false)
             {
                 this.bodies.splice(i,1);
+
                 lost_ball_sound.play();
+            }
+                
+         
+
+        }
+
+        for  (i=0; i<this.pinballs.length;i++)
+        {
+            if (this.pinballs[i].alive==false)
+            {
+                this.pinballs.splice(i,1);
+                
+                
             }
                 
          

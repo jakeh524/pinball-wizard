@@ -96,6 +96,7 @@ export class Simulation extends Scene {
     }
 
     simulate(frame_time) {
+        /*
         // simulate(): Carefully advance time according to Glenn Fiedler's
         // "Fix Your Timestep" blog post.
         // This line gives ourselves a way to trick the simulator into thinking
@@ -121,7 +122,13 @@ export class Simulation extends Scene {
         // the two latest simulation time steps, so we can correctly blend the
         // two latest states and display the result.
         let alpha = this.time_accumulator / this.dt;
-        for (let b of this.bodies) b.blend_state(alpha);
+        
+        */
+        this.update_state(this.dt)
+        for (let b of this.bodies)
+           b.advance(1);
+        for (let b of this.bodies) b.blend_state(1);
+        //this.steps_taken++;
     }
 
     make_control_panel() {
