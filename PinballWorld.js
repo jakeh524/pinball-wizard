@@ -10,7 +10,7 @@ const {Cube, Square, Triangle, Textured_Phong} = defs
 
 
 let score = 0;
-var bounce_sound, mushroom_bounce_sound, bouncer_sound, three_ball_sound, launch_sound, lost_ball_sound, flipper_sound_left, flipper_sound_right, game_over_sound, start_game_sound, spring_pull_up_sound, spring_pull_down_sound, insert_quarter_sound, change_camera_sound, score_sound, who_riff_1, who_riff_2;
+var bounce_sound, mushroom_bounce_sound, bouncer_sound, three_ball_sound, launch_sound, lost_ball_sound, flipper_sound_left, flipper_sound_right, game_over_sound, start_game_sound, spring_pull_up_sound, spring_pull_down_sound, insert_quarter_sound, change_camera_sound, score_sound, who_riff_1, who_riff_2, ball_hit_sound;
 
 
 
@@ -928,7 +928,7 @@ class Pinball extends RoundActor
         
         let model_transform=Mat4.identity().times(Mat4.translation(width-2,5,4)).times(Mat4.scale(1,1,1))
         
-        super(world, world.shapes.sphere,world.materials.iron,model_transform,1,0,0,1)
+        super(world, world.shapes.sphere,world.materials.iron,model_transform,1,ball_hit_sound,0,1)
     
         this.launched=false;
         
@@ -1360,6 +1360,7 @@ export class PinballWorld extends Simulation {
         three_ball_sound = new Audio("assets/three_ball_sound.mp3");
         who_riff_1 = new Audio("assets/who_riff_1.mp3");
         who_riff_2 = new Audio("assets/who_riff_2.mp3");
+        ball_hit_sound = new Audio("assets/tap_wall.mp3");
 
 
         
