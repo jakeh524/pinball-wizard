@@ -659,6 +659,11 @@ class Flipper extends PolyActor
             if (this.flipper_position>0)
             this.flipper_position--;
         }
+        if (this.flipper_position==0)
+        {
+            this.springiness=1;
+        }
+        else this.springiness=1.1
     }
     check_if_in_trapezoid(x,y,a_x,a_y,b_x,b_y,c_x,c_y,d_x,d_y)
     {
@@ -695,8 +700,8 @@ class Flipper extends PolyActor
       
       if (side==this.sides_list[0])
       {  
-           ball_vel_x*=1.5
-           ball_vel_y*=1.5
+           ball_vel_x*=2.5
+           ball_vel_y*=2.5
       }
       
  
@@ -721,7 +726,7 @@ class Flipper extends PolyActor
         var v = 0
         if (this.sides_list[0]==side)
         {
-           v = Math.sqrt((ball_vel_x/1.5) * (ball_vel_x/1.5)+ (ball_vel_y/1.5) * (ball_vel_y/1.5));
+           v = Math.sqrt((ball_vel_x/2.5) * (ball_vel_x/2.5)+ (ball_vel_y/2.5) * (ball_vel_y/2.5));
         }
         else
         {
@@ -863,7 +868,7 @@ class MultiballBonus extends PolyActor
 {
     constructor(world,model_transform,coords4D)
     {
-        super(world, world.shapes.diamond, world.materials.glow_yellow, model_transform, .85, who_riff_1, 250, coords4D )
+        super(world, world.shapes.diamond, world.materials.glow_yellow, model_transform, .95, who_riff_1, 250, coords4D )
         this.alive = true;
     }
     react_to_hit()
@@ -871,7 +876,7 @@ class MultiballBonus extends PolyActor
 
         if (this.world.multiball_cooldown==0 && this.alive == true)
         {
-            this.world.multiball_cooldown=200;
+            this.world.multiball_cooldown=500;
             this.alive = false;
             //this.model_transform = Mat4.identity().times(Mat4.translation(0, 1000, 0));
             this.material = this.world.materials.glow_red;
@@ -894,7 +899,7 @@ class Hit_All_Three extends PolyActor
 {
     constructor(world,model_transform,coords4D)
     {
-        super(world, world.shapes.cube, world.materials.glow_red, model_transform, .85, three_ball_sound, 50, coords4D )
+        super(world, world.shapes.cube, world.materials.glow_red, model_transform, .95, three_ball_sound, 50, coords4D )
         this.has_been_hit=false
     }
     react_to_hit()
@@ -1357,7 +1362,7 @@ export class PinballWorld extends Simulation {
 
         //Initial Game Settings
       
-        this.multiball_cooldown=1000;
+        this.multiball_cooldown=0;
         this.balls_remaining=0;
         this.active_balls=0;
 
@@ -1492,67 +1497,67 @@ export class PinballWorld extends Simulation {
         // nails left side
         // TODO: Figure out nails in blender. if collisions are all good after merge then disregard
         let nail_transform1 = model_transform.times(Mat4.translation(6, 48, 4));
-        let nail1 = new RoundActor(this, this.shapes.nail, this.materials.black, nail_transform1, .9, bounce_sound, 10, 1);
+        let nail1 = new RoundActor(this, this.shapes.nail, this.materials.black, nail_transform1, 1, bounce_sound, 10, 1);
         let nail_transform2 = model_transform.times(Mat4.translation(12, 48, 4));
-        let nail2 = new RoundActor(this, this.shapes.nail, this.materials.black, nail_transform2, .9, bounce_sound, 10, 1);
+        let nail2 = new RoundActor(this, this.shapes.nail, this.materials.black, nail_transform2, 1, bounce_sound, 10, 1);
         let nail_transform3 = model_transform.times(Mat4.translation(18, 48, 4));
-        let nail3 = new RoundActor(this, this.shapes.nail, this.materials.black, nail_transform3, .9, bounce_sound, 10, 1);
+        let nail3 = new RoundActor(this, this.shapes.nail, this.materials.black, nail_transform3, 1, bounce_sound, 10, 1);
         let nail_transform4 = model_transform.times(Mat4.translation(9, 42, 4));
-        let nail4 = new RoundActor(this, this.shapes.nail, this.materials.black, nail_transform4, .9, bounce_sound, 10, 1);
+        let nail4 = new RoundActor(this, this.shapes.nail, this.materials.black, nail_transform4, 1, bounce_sound, 10, 1);
         let nail_transform5 = model_transform.times(Mat4.translation(15, 42, 4));
-        let nail5 = new RoundActor(this, this.shapes.nail, this.materials.black, nail_transform5, .9, bounce_sound, 10, 1);
+        let nail5 = new RoundActor(this, this.shapes.nail, this.materials.black, nail_transform5, 1, bounce_sound, 10, 1);
         let nail_transform6 = model_transform.times(Mat4.translation(21, 42, 4));
-        let nail6 = new RoundActor(this, this.shapes.nail, this.materials.black, nail_transform6, .9, bounce_sound, 10, 1);
+        let nail6 = new RoundActor(this, this.shapes.nail, this.materials.black, nail_transform6, 1, bounce_sound, 10, 1);
         let nail_transform7 = model_transform.times(Mat4.translation(6, 36, 4));
-        let nail7 = new RoundActor(this, this.shapes.nail, this.materials.black, nail_transform7, .9, bounce_sound, 10, 1);
+        let nail7 = new RoundActor(this, this.shapes.nail, this.materials.black, nail_transform7, 1, bounce_sound, 10, 1);
         let nail_transform8 = model_transform.times(Mat4.translation(12, 36, 4));
-        let nail8 = new RoundActor(this, this.shapes.nail, this.materials.black, nail_transform8, .9, bounce_sound, 10, 1);
+        let nail8 = new RoundActor(this, this.shapes.nail, this.materials.black, nail_transform8, 1, bounce_sound, 10, 1);
         let nail_transform9 = model_transform.times(Mat4.translation(18, 36, 4));
-        let nail9 = new RoundActor(this, this.shapes.nail, this.materials.black, nail_transform9, .9, bounce_sound, 10, 1);
+        let nail9 = new RoundActor(this, this.shapes.nail, this.materials.black, nail_transform9, 1, bounce_sound, 10, 1);
 
         // nails right side
         let nail_transform10 = model_transform.times(Mat4.translation(46, 48, 4));
-        let nail10 = new RoundActor(this, this.shapes.nail, this.materials.black, nail_transform10, .9, bounce_sound, 10, 1);
+        let nail10 = new RoundActor(this, this.shapes.nail, this.materials.black, nail_transform10, 1, bounce_sound, 10, 1);
         let nail_transform11 = model_transform.times(Mat4.translation(52, 48, 4));
-        let nail11 = new RoundActor(this, this.shapes.nail, this.materials.black, nail_transform11, .9, bounce_sound, 10, 1);
+        let nail11 = new RoundActor(this, this.shapes.nail, this.materials.black, nail_transform11, 1, bounce_sound, 10, 1);
         let nail_transform12 = model_transform.times(Mat4.translation(58, 48, 4));
-        let nail12 = new RoundActor(this, this.shapes.nail, this.materials.black, nail_transform12, .9, bounce_sound, 10, 1);
+        let nail12 = new RoundActor(this, this.shapes.nail, this.materials.black, nail_transform12, 1, bounce_sound, 10, 1);
         let nail_transform13 = model_transform.times(Mat4.translation(43, 42, 4));
-        let nail13 = new RoundActor(this, this.shapes.nail, this.materials.black, nail_transform13, .9, bounce_sound, 10, 1);
+        let nail13 = new RoundActor(this, this.shapes.nail, this.materials.black, nail_transform13, 1, bounce_sound, 10, 1);
         let nail_transform14 = model_transform.times(Mat4.translation(49, 42, 4));
-        let nail14 = new RoundActor(this, this.shapes.nail, this.materials.black, nail_transform14, .9, bounce_sound, 10, 1);
+        let nail14 = new RoundActor(this, this.shapes.nail, this.materials.black, nail_transform14, 1, bounce_sound, 10, 1);
         let nail_transform15 = model_transform.times(Mat4.translation(55, 42, 4));
-        let nail15 = new RoundActor(this, this.shapes.nail, this.materials.black, nail_transform15, .9, bounce_sound, 10, 1);
+        let nail15 = new RoundActor(this, this.shapes.nail, this.materials.black, nail_transform15, 1, bounce_sound, 10, 1);
         let nail_transform16 = model_transform.times(Mat4.translation(46, 36, 4));
-        let nail16 = new RoundActor(this, this.shapes.nail, this.materials.black, nail_transform16, .9, bounce_sound, 10, 1);
+        let nail16 = new RoundActor(this, this.shapes.nail, this.materials.black, nail_transform16, 1, bounce_sound, 10, 1);
         let nail_transform17 = model_transform.times(Mat4.translation(52, 36, 4));
-        let nail17 = new RoundActor(this, this.shapes.nail, this.materials.black, nail_transform17, .9, bounce_sound, 10, 1);
+        let nail17 = new RoundActor(this, this.shapes.nail, this.materials.black, nail_transform17, 1, bounce_sound, 10, 1);
         let nail_transform18 = model_transform.times(Mat4.translation(58, 36, 4));
-        let nail18 = new RoundActor(this, this.shapes.nail, this.materials.black, nail_transform18, .9, bounce_sound, 10, 1);
+        let nail18 = new RoundActor(this, this.shapes.nail, this.materials.black, nail_transform18, 1, bounce_sound, 10, 1);
 
         this.bodies.push(nail1, nail2, nail3, nail4, nail5, nail6, nail7, nail8, nail9, nail10, nail11, nail12, nail13, nail14, nail15, nail16, nail17, nail18);
 
         // mushroom placement
         let mushroom_transform1 = model_transform.times(Mat4.translation(15, 58, 4));
-        let mushroom1 = new RoundActor(this, this.shapes.mushroom, this.materials.rusty_metal, mushroom_transform1, 0.8, mushroom_bounce_sound, 50, 1);
+        let mushroom1 = new RoundActor(this, this.shapes.mushroom, this.materials.rusty_metal, mushroom_transform1, 0.85, mushroom_bounce_sound, 50, 1);
         let mushroom_transform2 = model_transform.times(Mat4.translation(49, 58, 4));
-        let mushroom2 = new RoundActor(this, this.shapes.mushroom, this.materials.rusty_metal, mushroom_transform2, 0.8, mushroom_bounce_sound, 50, 1);
+        let mushroom2 = new RoundActor(this, this.shapes.mushroom, this.materials.rusty_metal, mushroom_transform2, 0.85, mushroom_bounce_sound, 50, 1);
         let mushroom_transform3 = model_transform.times(Mat4.translation(20, 20, 4));
-        let mushroom3 = new RoundActor(this, this.shapes.mushroom, this.materials.rusty_metal, mushroom_transform3, 0.8, mushroom_bounce_sound, 50, 1);
+        let mushroom3 = new RoundActor(this, this.shapes.mushroom, this.materials.rusty_metal, mushroom_transform3, 0.85, mushroom_bounce_sound, 50, 1);
         let mushroom_transform4 = model_transform.times(Mat4.translation(44, 20, 4));
-        let mushroom4 = new RoundActor(this, this.shapes.mushroom, this.materials.rusty_metal, mushroom_transform4, 0.8, mushroom_bounce_sound, 50, 1);
+        let mushroom4 = new RoundActor(this, this.shapes.mushroom, this.materials.rusty_metal, mushroom_transform4, 0.85, mushroom_bounce_sound, 50, 1);
         
         this.bodies.push(mushroom1, mushroom2, mushroom3, mushroom4);
 
         // bouncer placement
         let bouncer_transform1 = model_transform.times(Mat4.translation(21, 64, 4)).times(Mat4.scale(1.5, 1.5, 1));
-        let bouncer1 = new RoundActor(this, this.shapes.bouncer, this.materials.rusty_metal2, bouncer_transform1, 1.1, bouncer_sound, 100, 1);
+        let bouncer1 = new RoundActor(this, this.shapes.bouncer, this.materials.rusty_metal2, bouncer_transform1, 1.15, bouncer_sound, 100, 1);
         let bouncer_transform2 = model_transform.times(Mat4.translation(43, 64, 4)).times(Mat4.scale(1.5, 1.5, 1));
-        let bouncer2 = new RoundActor(this, this.shapes.bouncer, this.materials.rusty_metal2, bouncer_transform2, 1.1, bouncer_sound, 100, 1);
+        let bouncer2 = new RoundActor(this, this.shapes.bouncer, this.materials.rusty_metal2, bouncer_transform2, 1.15, bouncer_sound, 100, 1);
         let bouncer_transform3 = model_transform.times(Mat4.translation(15, 24, 4)).times(Mat4.scale(1.5, 1.5, 1));
-        let bouncer3 = new RoundActor(this, this.shapes.bouncer, this.materials.rusty_metal2, bouncer_transform3, 1.1, bouncer_sound, 100, 1);
+        let bouncer3 = new RoundActor(this, this.shapes.bouncer, this.materials.rusty_metal2, bouncer_transform3, 1.15, bouncer_sound, 100, 1);
         let bouncer_transform4 = model_transform.times(Mat4.translation(49, 24, 4)).times(Mat4.scale(1.5, 1.5, 1));
-        let bouncer4 = new RoundActor(this, this.shapes.bouncer, this.materials.rusty_metal2, bouncer_transform4, 1.1, bouncer_sound, 100, 1);
+        let bouncer4 = new RoundActor(this, this.shapes.bouncer, this.materials.rusty_metal2, bouncer_transform4, 1.15, bouncer_sound, 100, 1);
 
         this.bodies.push(bouncer1, bouncer2, bouncer3, bouncer4);
 
@@ -1689,12 +1694,12 @@ export class PinballWorld extends Simulation {
         });
         this.key_triggered_button("Left Flipper", ["l"], () => {
             if (this.left_flipper_cooldown==0)flipper_sound_left.play();
-            this.left_flipper_cooldown=35;
+            this.left_flipper_cooldown=25;
             
         });
         this.key_triggered_button("Right Flipper", [";"], () => {
             if (this.right_flipper_cooldown==0)flipper_sound_right.play();
-            this.right_flipper_cooldown=35;
+            this.right_flipper_cooldown=25;
             
         });
         this.new_line();
@@ -1715,6 +1720,11 @@ export class PinballWorld extends Simulation {
             change_camera_sound.play();
             this.ball_focus=false;
             this.frontview=true;
+        });
+        this.new_line();
+        this.key_triggered_button("Free Multiball (for demo)", ["z"], () => 
+        {
+            this.multiball_cooldown=1000
         });
         //this.new_line();
 
