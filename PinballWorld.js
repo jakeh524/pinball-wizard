@@ -400,7 +400,8 @@ point_in_box(x,y,a,b,c,d) {
       let ball_y=ball_center_y_pos
       let ball_vel_x=velocity_x
       let ball_vel_y=velocity_y
- 
+     
+      
       let ball_r=ball_radius;
       var is_vertical_path = false;
         var is_vertical_wall = false;
@@ -581,13 +582,13 @@ class Flipper extends PolyActor
         this.world=world;
         this.flipper_position=0;
 
-        this.flip_max=15;
+        this.flip_max=50;
         this.original_mat=rest_transform;
 
         this.flipper_coords_access=[vec4(-1.9709683418274, 0.8929912686347961, 0.175160526148974895,1),
-        vec4(1.118709683418274, 0.5929912686347961, 0.165160526148974895,1),
-        vec4(1.118709683418274, 0.5929912686347961, -0.265160526148974895,1),
-        vec4(-1.98709683418274, 0.8929912686347961, -0.275160526148974895,1)];;
+        vec4(1.118709683418274, 0.7929912686347961, 0.165160526148974895,1),
+        vec4(1.118709683418274, 0.7929912686347961, -0.065160526148974895,1),
+        vec4(-1.98709683418274, 0.8929912686347961, -0.065160526148974895,1)];
     }
     doSomething()
     {
@@ -596,7 +597,7 @@ class Flipper extends PolyActor
     rotate()
     {
 
-        let lth =  3.14159*(Math.min(this.flipper_position,10))/(this.flip_max*2);
+        let lth =  3.14159*this.flipper_position/(this.flip_max*2);
         let mt=Mat4.identity();
         mt = mt.times(Mat4.rotation(-Math.sin(lth),0.,0,1));
         mt=mt.times(Mat4.translation(-5*Math.sin(lth),4.5*Math.sin(lth),0))
@@ -618,6 +619,8 @@ class Flipper extends PolyActor
         this.sides_list.push([new_mat.times(this.flipper_coords_access[i]),new_mat.times(this.flipper_coords_access[i+1])]);
         i++;
     }
+    this.sides_list=[...this.sides_list,this.sides_list[0]]
+
     }
     
     adjust_flipper_position(up)
@@ -638,8 +641,204 @@ class Flipper extends PolyActor
             this.flipper_position--;
         }
     }
+    check_if_in_trapezoid(x,y,a_x,a_y,b_x,b_y,c_x,c_y,d_x,d_y)
+    {
+       
+       let m=(b_y-a_y)/(b_x-a_x);
+       let intercept=b_y-m*b_x;
+       let q1=m*x-y+intercept;
+       
+       m=(c_y-b_y)/(c_x-b_x);
+       intercept=c_y-m*c_x;
+       let q2=m*x-y+intercept;
 
+       m=(d_y-c_y)/(d_x-c_x);
+       intercept=d_y-m*d_x;
+       let q3=m*x-y+intercept;
+
+       m=(a_y-d_y)/(a_x-d_x);
+       intercept=a_y-m*a_x;
+       let q4=m*x-y+intercept;
+       if ((q1>0 && q2>0 && q3>0 && q4>0) || (q1<0 && q2<0 && q3<0 && q4<0))
+       {
+           return true;
+       }
+       else return false;
+        
+    }
+    
+    check_if_crossed_specific_side(dt,ball_center_x_pos,ball_center_y_pos,velocity_x,velocity_y,ball_radius,side)
+  {
+      let ball_x=ball_center_x_pos
+      let ball_y=ball_center_y_pos
+      let ball_vel_x=velocity_x
+      let ball_vel_y=velocity_y
+      
+      if (side==this.sides_list[0])
+      {  
+           ball_vel_x*=1.5
+           ball_vel_y*=1.5
+      }
+      
+ 
+      let ball_r=ball_radius;
+      var is_vertical_path = false;
+        var is_vertical_wall = false;
+      let side_r = Math.sqrt(  (side[1][0]-side[0][0])*(side[1][0]-side[0][0]) + (side[1][1]-side[0][1])*(side[1][1]-side[0][1]) )
+        // Where is the ball in the next frame?
+        var bx = ball_x + ball_vel_x;
+        var by = ball_y + ball_vel_y;  
+      // let side_next=null
+        
+
+        // Make sure we are at least somewhat close to the target
+        /*
+        var d = this.my_distance( (side[1][0]-side[0][0])/2 , side[1][1]-side[0][1],ball_x,ball_y);
+        if ( (side_r + 2*ball_r ) < d) {
+            return;
+        }
+        */
+        // find velocity
+        var v = 0
+        if (this.sides_list[0]==side)
+        {
+           v = Math.sqrt((ball_vel_x/1.5) * (ball_vel_x/1.5)+ (ball_vel_y/1.5) * (ball_vel_y/1.5));
+        }
+        else
+        {
+           v = Math.sqrt(ball_vel_x * ball_vel_x+ ball_vel_y * ball_vel_y);
+        }
+
+        // find theta_path, m_path, and b_path
+        var theta_path = this.get_theta(ball_vel_x, ball_vel_y);
+        var m_path = this.get_m(ball_vel_x, ball_vel_y);
+        var b_path = ball_y - m_path * ball_x;   // y intercept of path
+
+        // find the theta_wall, m_wall, and b_wall
+        var wall_dy = side[1][1] - side[0][1];
+        var wall_dx = side[1][0] - side[0][0];
+        var theta_wall = this.get_theta(wall_dx, wall_dy);
+        var m_wall = this.get_m(wall_dx, wall_dy);
+        var b_wall = side[0][1] - m_wall * side[0][0];   // y intercept of path
+               
+        // Find collision point
+        var collision_x = 0;
+        var collision_y = 0;
+
+        if(wall_dx == 0) {   // vertical wall
+            is_vertical_wall = true;
+            if(wall_dy != 0) {
+                if (ball_vel_x==0) return null;
+                // calculate intersection
+                // x is fixed because line is vertical
+                collision_x = side[0][0];
+                collision_y = ball_y + (ball_vel_y/ball_vel_x)*(side[0][0]-ball_x);
+
+                //console.log("vertical wall collides " + collision_x
+                   //  + "," + collision_y);
+
+            }
+            else { // wall is a point;
+                m_wall = -999;  // approximation
+                theta_wall = -3.14159/2;
+                collision_x = side[0][0];
+                collision_y = side[0][1];
+                //console.log("point wall collides " + collision_x +
+                //    "," + collision_y );
+            }
+        }
+        else {
+            is_vertical_wall = false;
+
+            // find the point of collision
+            // b= y-mx for both lines, and at crossing y and x are the same
+            // b1 = y-m1x; y = m2x + b2;
+            // b1 = (m2x + b2) - m1x = (m2-m1)x + b2;
+            // x = (b1-b2)/(m2-m1)
+
+            if(m_path == m_wall) {
+                //console.log("No collision, wall and path are parallel.");
+                return null; // avoid errors
+            }
+            collision_x = (b_path - b_wall)/(-m_path + m_wall);
+            collision_y = m_path * collision_x + b_path;
+           // console.log("Path collides with wall at " + collision_x +
+        //            "," + collision_y );
+        }
+
+            // see how close we are to the crossing point  
+            //
+            var d1 = collision_x - ball_x;
+            var d2 = collision_y - ball_y;
+            var d3 = d1*d1 + d2*d2;
+            var distance_to_collision = Math.sqrt(d3);
+            /*
+            if (distance_to_collision>25) {          // must be within 5 units for a hit
+                return;
+            }
+            */
+            // Make sure the colliison point is on the wall segment
+
+            if(!this.point_in_box(collision_x, collision_y, side[0][0], side[0][1], side[1][0], side[1][1]))
+            {
+      //          console.log("The collision point is not on the line segement.");
+                return null;
+            }
+            //else console.log("The collision point IS on the line segement.");
+
+            // find the bounce direction
+            //    IS THIS CORRECT?
+            var theta_bounce = 2*theta_wall - theta_path;
+
+            // find the new velocities and position
+            let anuvx = v * Math.cos(theta_bounce) * this.springiness; // CHANGES MADE HERE
+            let anuvy = v * Math.sin(theta_bounce) * this.springiness;
+            let anux = ball_x + anuvx;
+            let anuy = ball_y + anuvy;
+
+            //  Make sure this is further from the intersection point
+            distance_to_collision = this.my_distance (ball_x, ball_y, collision_x, collision_y);
+
+            // Check if the point now and in the next frame are on opposite sides of the wall
+            // If not, we are headed in the wrong direction
+
+            // Two given points P(x1, y1) and Q(x2, y2) will lie on the same side of the line
+            // ax+by+c=0 if ax1+by1+c and ax2+by2+c will have same signs.
+            // On the other hand, P(x1, y1) and Q(x2, y2) will lie on the
+            // opposite sides of the line ax+by+c=0 if ax1+by1+c and ax2+by2+c will have opposite signs.
+
+            let test1 = m_wall * ball_x - ball_y + b_wall;
+            let test2 = m_wall * (ball_x+ball_vel_x) - (ball_y+ball_vel_y) + b_wall;
+            let test3 = test1*test2;
+
+            if(test3>0){
+                //console.log("The travel path does not cross the wall so no bounce.");
+                return null;
+            }
+
+            //a.vx = v * Math.cos(theta_bounce);
+            //a.vy = v * Math.sin(theta_bounce);
+
+            // a.x = a.x + avx;
+            // a.y = a.y + avy;
+            /*
+            console.log("Bounce============");
+            console.log("Ball location = " + a.x + "," + a.y);
+            console.log("Ball velocity = " + a.vx + "," + a.vy);
+            console.log("No turn destination = " + (a.x+a.vx) + "," + (a.y+a.vy));
+            console.log("Collision point = " + collision_x + "," + collision_y);
+            console.log("Ball distance from intersection = " + distance_to_collision);
+            console.log("Ball new velocity = " +  anuvx + "," + anuvy);
+            console.log("Theta travel = " + theta_path );
+            const le.log("Theta bounce =" + theta_bounce);
+*/
+            
+            let new_vels=[anuvx,anuvy]
+            return new_vels;
+
+    }
 }
+
 
 class MultiballBonus extends PolyActor
 {
@@ -728,7 +927,44 @@ class Pinball extends RoundActor
 
 
     }
+    get_theta(x,y) {
+    // see https://www.mathsisfun.com/polar-cartesian-coordinates.html
+    let pi = 3.14159265;
+    let pi2 = 2 * 3.14159265;
+    if (x != 0) {
+        let a = Math.atan(y/x);
+        if(x>0 && y>0){ // quadrant I
+           if(a>pi2)a -+ pi2;
+           return a;
+        }
+        if(x<0){  // quadrants II and III
+            a = a + pi;  
+            if(a>pi2)a -+ pi2;
+            return a;
+        }
+        a = a + 2 * pi;
+        if(a>pi2)a -+ pi2;
+        if(a>pi2)a -+ pi2;
+        return a;
+    }
+    if(y>0)return pi/2;
+    return 3*pi/2;
+}
+      distance(a){ // distance to actor a  
+        var d = (this.center[0] - a.center[0]) * (this.center[0] - a.center[0]) + (this.center[1] - a.center[1]) * (this.center[1] - a.center[1]);
+        var e = Math.sqrt(d);
+        return e;
+    }
+     get_m(x,y) {
+    if(x !=0)return y/x;
+    if(y>0) return 999.;
+    return -999.;
+}
 
+my_distance (x1,y1,x2,y2) {
+    var d = Math.sqrt((x1-x2)*(x1-x2)+(y1-y2)*(y1-y2));
+    return d;
+}
     die()
     {
          if (this.world.camera_focus==this)
@@ -748,7 +984,7 @@ class Pinball extends RoundActor
 
     get_launched()
     {
-        this.change_velocities(0,.18*this.world.launch_speed)
+        this.change_velocities(0,.4*this.world.launch_speed+Math.random(0,.02))
         this.launched=true;
         this.world.camera_focus=this;
     }
@@ -756,10 +992,129 @@ class Pinball extends RoundActor
     apply_gravity(dt)
     {
        
-        let gravity=.005;
+        let gravity=.01;
         this.linear_velocity[1]-=gravity;
       
 
+    }
+    check_if_ball_inside_and_provide_vel_changes(ball)
+    {
+        if (this == ball) {
+            console.log("Ball.collide error: Self collision is not allowed.");
+            return;
+        }
+
+
+        // new solution 12/8
+
+        //  quick solution - this works pretty well
+
+var d = this.distance(ball);
+var my_overlap = d - this.radius - ball.radius;
+var theta_travel = 0;
+var balls_overlap = false;
+var ball_range = this.radius + ball.radius + (Math.abs(ball.linear_velocity[0]) + Math.abs(ball.linear_velocity[1]))/50;
+
+if ( ball_range >= d) {   // vague inaccurate distance check 
+    //console.log("Ball range=" + ball_range + " d=" + d + ", so we will check for collision.");
+}
+else {
+   // console.log("Balls out of range.  r1+r2=" + (this.radius + ball.radius) + " d=" + d + ", so no need to check for collision.");
+    return null;  // no crossing
+}
+
+var overlap = d-(this.radius + ball.radius);   // minimum distance we need to move to prevent overlaps
+if(overlap < 0) {
+   // console.log("Objects currently overlap.")
+    balls_overlap = true;
+}
+else{
+    //console.log("Objects do not overlap");
+    balls_overlap = false;
+}
+
+
+var nx = this.center[0] + ((this.linear_velocity[0]/10 - ball.linear_velocity[0])/10);
+var ny = this.center[1] + ((this.linear_velocity[1]/10 - ball.linear_velocity[1])/10);
+var nd1 = this.my_distance(this.center[0], this.center[1], ball.center[0], ball.center[1]);
+var nd2 = this.my_distance(nx,ny, ball.center[0], ball.center[1]);
+
+//console.log("nd1=" + nd1 + " nd2 = " + nd2);
+
+var is_approaching_2 = false;
+if (nd1 > nd2) is_approaching_2 = true;
+
+let is_approaching = is_approaching_2;
+
+if (is_approaching) {
+    //console.log ("(2)Objects are getting closer, distance = " + d);
+}
+else {
+    //console.log("(2)Objects are getting further apart, distance = " + d);
+    if(balls_overlap) {}//console.log("However, we have already collided so that is ok.");
+    else {
+       // console.log("If they have not collided yet, they probably won't.");
+        return null;
+    }
+}
+
+var pi = 3.14159265;
+var theta_bouncer_to_ball = this.get_theta(ball.center[0]-this.center[0], ball.center[1]-this.center[1]);
+//console.log("Angle from bouncer to ball at initial position is " + theta_bouncer_to_ball);
+//console.log("Angle of travel theta_travel is " + theta_travel);
+var theta_t = theta_travel + pi;
+if (theta_t > 2*pi) theta_t = theta_t - 2*pi;
+//console.log("Inverse angle of travel theta_t is " + theta_t);
+var theta_bounce = 2*theta_bouncer_to_ball - theta_t;
+//console.log("Bounce angle is " + theta_bounce);
+
+// find average velocity
+//
+var avx = (this.linear_velocity[0] + ball.linear_velocity[0])/2.;
+var avy = (this.linear_velocity[1] + ball.linear_velocity[1])/2.;
+console.log("Avg velocity = " + avx + "," + avy);
+
+// find speed of approach
+var bvx = 0.5 * (this.linear_velocity[0] - ball.linear_velocity[0]);
+var bvy = 0.5 * (this.linear_velocity[1] - ball.linear_velocity[1]);
+console.log("Approach velocity = " + bvx + "," + bvy);
+
+/*if(balls_overlap) {
+    if(bvx<0)bvx -=2.;
+    else bvx +=2.;
+    if(bvy<0)bvy -=2.;
+    else bvy +=2.;
+}*/
+
+if(my_overlap>0) { // we will back them up
+    if(bvx<0){
+        this.center[0] -= my_overlap;
+        bvx -= 1.;
+    }
+    else {
+        this.center[1] += my_overlap;
+        bvx+=1;
+    }
+    if(bvy<0) {
+        this.center[1] -= my_overlap;
+        bvy -= 1.;
+    }
+    else {
+        this.center[1] += my_overlap;
+        bvy += 1.;
+    }
+}
+
+// Reverse velocities and add
+this.linear_velocity[0] = avx - bvx;
+this.linear_velocity[1] = avy - bvy;
+ball.linear_velocity[0] = avx + bvx;
+ball.linear_velocity[1] = avy + bvy;
+
+console.log("Ball vx = " + ball.linear_velocity[0] + " vy= " + ball.linear_velocity[1]);
+console.log("Target vx = " + this.linear_velocity[0] + " vy= " + this.linear_velocity[1]);
+
+return 1;
     }
 
     
@@ -983,7 +1338,7 @@ export class PinballWorld extends Simulation {
 
         //Initial Game Settings
       
-        this.multiball_cooldown=0;
+        this.multiball_cooldown=1000;
         this.balls_remaining=0;
         this.active_balls=0;
 
