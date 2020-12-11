@@ -868,19 +868,26 @@ class MultiballBonus extends PolyActor
 {
     constructor(world,model_transform,coords4D)
     {
-        super(world, world.shapes.diamond, world.materials.glow_yellow, model_transform, .95, who_riff_1, 250, coords4D )
-        this.alive = true;
+        super(world, world.shapes.diamond, world.materials.glow_yellow, model_transform, 0.95, 0, 250, coords4D );
+        this.has_been_hit = false;
     }
     react_to_hit()
     {
 
-        if (this.world.multiball_cooldown==0 && this.alive == true)
+        if (this.world.multiball_cooldown==0 && this.has_been_hit == false)
         {
+
+
+            who_riff_1.play();
             this.world.multiball_cooldown=500;
-            this.alive = false;
-            //this.model_transform = Mat4.identity().times(Mat4.translation(0, 1000, 0));
+            this.has_been_hit = true;
             this.material = this.world.materials.glow_red;
+            
+            //this.model_transform = Mat4.identity().times(Mat4.translation(0, 1000, 0));
+            //this.material = this.world.materials.glow_red;
         }
+
+
         
 
         
@@ -1988,6 +1995,8 @@ export class PinballWorld extends Simulation {
         if (this.hit_all_three_count==3)
         {
             score+=1000
+
+            who_riff_2.play();
             
             this.hit_all_three_count=0;
             this.trio[0].has_been_hit=false;
