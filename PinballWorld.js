@@ -863,7 +863,7 @@ class MultiballBonus extends PolyActor
 {
     constructor(world,model_transform,coords4D)
     {
-        super(world, world.shapes.diamond, world.materials.glow_yellow, model_transform, .8, who_riff_1, 250, coords4D )
+        super(world, world.shapes.diamond, world.materials.glow_yellow, model_transform, .85, who_riff_1, 250, coords4D )
         this.alive = true;
     }
     react_to_hit()
@@ -894,7 +894,7 @@ class Hit_All_Three extends PolyActor
 {
     constructor(world,model_transform,coords4D)
     {
-        super(world, world.shapes.cube, world.materials.glow_red, model_transform, .8, three_ball_sound, 50, coords4D )
+        super(world, world.shapes.cube, world.materials.glow_red, model_transform, .85, three_ball_sound, 50, coords4D )
         this.has_been_hit=false
     }
     react_to_hit()
@@ -1154,7 +1154,7 @@ export class PinballWorld extends Simulation {
         //Camera-related settings
         this.ball_focus=false;
         // camera location
-        this.initial_camera_location = Mat4.look_at(vec3(35, -55, 100), vec3(35, 55, 0), vec3(0, 1, 1));
+        this.initial_camera_location = Mat4.look_at(vec3(8*35,-80.2*2, 6*20), vec3(35, 55, 0), vec3(0, 0, 1))
         this.camera_focus=null;
         this.start_game_flag == false;
 
@@ -1437,17 +1437,17 @@ export class PinballWorld extends Simulation {
 
         let bouncer_rot_transform=model_transform.times(Mat4.rotation(Math.PI/2,1,0,0))
 
-        this.bodies=[new PolyActor(this,this.shapes.cube, this.materials.red_steel,left_transform,0.8,bounce_sound,0,cube_vertices),
-           new PolyActor(this,this.shapes.cube, this.materials.red_steel,right_transform,0.8,bounce_sound,0,cube_vertices),
-           new PolyActor(this,this.shapes.cube, this.materials.red_steel,top_transform,0.8,bounce_sound,0,cube_vertices),
-           new PolyActor(this,this.shapes.cube, this.materials.red_steel,bottom_transform,0.8,bounce_sound,0,cube_vertices),
-           new PolyActor(this,this.shapes.cube, this.materials.red_steel,diag_transform,0.8,bounce_sound,0,cube_vertices),
-           new PolyActor(this,this.shapes.cube, this.materials.red_steel,right_barrier,0.8,bounce_sound,0,cube_vertices),
-           new PolyActor(this,this.shapes.cube, this.materials.red_steel,left_diag,0.8,bounce_sound,0,cube_vertices),
-           new PolyActor(this,this.shapes.cube, this.materials.red_steel,right_diag,0.8,bounce_sound,0,cube_vertices),
+        this.bodies=[new PolyActor(this,this.shapes.cube, this.materials.red_steel,left_transform,0.85,bounce_sound,0,cube_vertices),
+           new PolyActor(this,this.shapes.cube, this.materials.red_steel,right_transform,0.85,bounce_sound,0,cube_vertices),
+           new PolyActor(this,this.shapes.cube, this.materials.red_steel,top_transform,0.85,bounce_sound,0,cube_vertices),
+           new PolyActor(this,this.shapes.cube, this.materials.red_steel,bottom_transform,0.85,bounce_sound,0,cube_vertices),
+           new PolyActor(this,this.shapes.cube, this.materials.red_steel,diag_transform,0.85,bounce_sound,0,cube_vertices),
+           new PolyActor(this,this.shapes.cube, this.materials.red_steel,right_barrier,0.85,bounce_sound,0,cube_vertices),
+           new PolyActor(this,this.shapes.cube, this.materials.red_steel,left_diag,0.85,bounce_sound,0,cube_vertices),
+           new PolyActor(this,this.shapes.cube, this.materials.red_steel,right_diag,0.85,bounce_sound,0,cube_vertices),
            
-           new PolyActor(this,this.shapes.cube, this.materials.red_steel,right_flipper_side,0.8,bounce_sound,0,cube_vertices),
-           new PolyActor(this,this.shapes.cube, this.materials.red_steel,left_flipper_side,0.8,bounce_sound,0,cube_vertices),
+           new PolyActor(this,this.shapes.cube, this.materials.red_steel,right_flipper_side,0.85,bounce_sound,0,cube_vertices),
+           new PolyActor(this,this.shapes.cube, this.materials.red_steel,left_flipper_side,0.85,bounce_sound,0,cube_vertices),
             //new PolyActor(this,this.shapes.left_flipper, this.materials.stars,Mat4.identity(),1,0,0,flipper_vertices),
            
            
@@ -1699,10 +1699,22 @@ export class PinballWorld extends Simulation {
         });
         this.new_line();
         this.key_triggered_button("Launch Pinball", ["Enter"], () => {this.launch_ball()});
-        this.key_triggered_button("Switch camera", ["c"], () => 
+        this.key_triggered_button("Focus camera on ball", ["c"], () => 
         {
             change_camera_sound.play();
             this.ball_focus = !this.ball_focus;
+        });
+        this.key_triggered_button("Entryway View", ["-"], () => 
+        {
+            change_camera_sound.play();
+            this.ball_focus = false;
+            this.frontview=false
+        });
+        this.key_triggered_button("Front view", ["+"], () => 
+        {
+            change_camera_sound.play();
+            this.ball_focus=false;
+            this.frontview=true;
         });
         //this.new_line();
 
@@ -1762,9 +1774,40 @@ export class PinballWorld extends Simulation {
 
 
         if (this.ball_focus && this.camera_focus!=null) 
-        program_state.set_camera(Mat4.inverse(this.camera_focus.drawn_location.times(Mat4.translation(0,0,40))));
-        else program_state.set_camera(this.initial_camera_location);
+        {
+        let ball_mat=this.camera_focus.drawn_location.times(Mat4.translation(0,0,40));
+             
+            
+            program_state.set_camera(Mat4.inverse(ball_mat))
+        }
+        else if (this.frontview)
+        {
+            const desired= Mat4.inverse(Mat4.look_at(vec3(35, -55, 100), vec3(35, 55, 0), vec3(0, 1, 1)))
+            //We take basis for planet we want to attach to and move 5 units in the positive direction on z-axis (equivalent to moving camera
+            //back 5 units
+            const blending_factor=.1; //How much we want to blend the desired matrix into our current one. Lower means the camera moves slower.
+            const mixed=desired.map( (x,i) => Vector.from( program_state.camera_transform[i] ).mix( x, blending_factor ) )
+            
+            program_state.set_camera(Mat4.inverse(mixed))
+            //Must pass in inverse to set camera function
+        }
+        else
+        {
 
+            let desired=Mat4.inverse(this.initial_camera_location);
+                  
+            //We take basis for planet we want to attach to and move 5 units in the positive direction on z-axis (equivalent to moving camera
+            //back 5 units
+            const blending_factor=.1; //How much we want to blend the desired matrix into our current one. Lower means the camera moves slower.
+            const mixed=desired.map( (x,i) => Vector.from( program_state.camera_transform[i] ).mix( x, blending_factor ) )
+            
+            program_state.set_camera(Mat4.inverse(mixed))
+            //Must pass in inverse to set camera function
+        }
+       
+       
+        
+        
 
         super.display(context,program_state);
 
@@ -1848,7 +1891,7 @@ export class PinballWorld extends Simulation {
         let i=0
         while (i<this.bodies.length)
         {
-           this.bodies[i].draw_corners(context,program_state)      
+          // this.bodies[i].draw_corners(context,program_state)      
            i++;
         }
         
