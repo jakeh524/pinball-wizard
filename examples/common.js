@@ -867,6 +867,23 @@ const Movement_Controls = defs.Movement_Controls =
         }
 
         make_control_panel() {
+            this.control_panel.innerHTML += // "<h2>To start the game:</h2>" +
+            '<p>Click "Front View" to view the game.<br>' +
+            'Click "Start Game" to start the game.<br>' +
+            'Click "Pull Spring" to adjust the ball speed.<br>' +
+            'Click "Launch" to fire a ball.<br>' +
+            'Click the "Flipper" buttons to move the flippers.<br><br>' +
+            'You get points every time you hit something.  The triple target ' +
+            'in the back gives you a bonus if you can hit all three ' +
+            'targets.  The score is shown on the backboard.  The "Multiball" ' +
+            'option allows you to launch as many balls as you like at one time.  ' +
+            'This allows you to view multi-ball interactions.</p>' +
+            '<p>Written by Jim Pickrell, Landon Miller and Jake Herron, all equal participants in this UCLA CS 174 Final Project.';
+
+
+        }
+
+        x_make_control_panel() {
             // make_control_panel(): Sets up a panel of interactive HTML elements, including
             // buttons with key bindings for affecting this scene, and live info readouts.
             this.control_panel.innerHTML += "Click and drag the scene to spin your viewpoint around it.<br>";
