@@ -22,7 +22,7 @@ Option 1
 4. Follow the directions on screen to start playing!
 
 Option 2
-1. Navigate to http:www.brandx.net/cs174/team-project-pinball-sorcerers-master/
+1. Navigate to www.brandx.net/cs174/team-project-pinball-sorcerers-master/
 2. Follow the directions on screen to start playing!
 
 ## About our game and how to play
@@ -41,7 +41,7 @@ Textures also saw an evolution throughout the development of this project. They 
 
 Next, we installed a score system with a counter at the top of the machine and each obstacle providing a certain amount of points that would add to the player's score as they played the game. We also implemented "Start Game" and "Game Over" screens to immerse the player and create a game experience. At this point, we added two unique obstacles into the game to create a fun experience for the player. The three-hit obstacle were polygons placed at the back of the machine that would light up upon hit and reward the player with bonus points if they could hit all three of them. The multiball obstacle would allow the player to launch many balls onto the field at once in quick succession upon hit. We included better controls and a clearer UI at this point as well. 
 
-As we added more features and effects, the final demo day neared closer, and we kicked into overdrive mode to debug our game and fix collision issues. Once these were addressed, we completed our game and presented it in class. We had a lot of fun developing this game and learned a ton along the way!
+As we added more features and effects, the final demo day neared closer, and we kicked into overdrive mode to debug our game and fix collision issues. Once these were addressed, we completed our game and presented it in class.
 
 ## Challenges we faced and lessons we learned
 
@@ -49,4 +49,4 @@ The first challenge we face was using the example collision detection functions 
 
 The next challenge we faced was implementing the flippers. First, to have them move in a realistic manner, we had to have them rotate on a hinge point, which required implementing a custom rotate function that matched the shape of the flipper. We also had to implement a system to have the hitbox of the flipper move with it as it rotated. The movement of the flipper also provided other challenges when it came to colliding with the ball. As we were nearing the deadline, we discovered that sometimes the ball would phase through the flipper and miss the collision due to the frame rate of the game. We were all hands on deck at this point as we resolved the issue by having the top side of the flipper hitbox attempt to detect collisions from farther away. This fix led to more reliable flipper collisions and a better playing experience. 
 
-
+Throughout the development of Pinball Wizard, we learned a ton about Javascript, WebGL, git development, and most of all Computer Graphics. We found ourselves consistently applying concepts we learned in class and through the homework projects. This project also allowed us to expand our skills with other tools like image editing for textures, Maya for 3D modeling, Audacity for sound editing, and lastly Zoom for (a lot of) communication. Finally, we learned how to work well in a group and develop a large project like this as a team. We had a lot of fun developing this game and learned a ton along the way!
