@@ -1,9 +1,13 @@
 # Pinball Wizard
 
 Authors:
+
 Jake Herron / jaherron@ucla.edu
+
 Landon Miller / sunvalley@ucla.edu
+
 Jim Pickrell / jim.pickrell@gmail.com
+
 
 Pinball Wizard is a Javascript and WebGL game completed as a final group project for CS 174A: Introduction to Computer Graphics at UCLA. It is a 70s-inspired pinball game with 3D graphics, realistic physics simulation, and collision detection.
 
