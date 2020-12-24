@@ -14,7 +14,7 @@ Pinball Wizard is a Javascript and WebGL game completed as a final group project
 ## To run the program:
 
 Option 1
-1. Navigate to https://jakeaherron.com/Pinball-Wizard/
+1. Navigate to https://jakeaherron.com/pinball-wizard/
 2. Follow the directions on screen to start playing!
 
 Option 2
