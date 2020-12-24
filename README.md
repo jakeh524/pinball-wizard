@@ -14,6 +14,10 @@ Pinball Wizard is a Javascript and WebGL game completed as a final group project
 ## To run the program:
 
 Option 1
+1. Navigate to https://jakeaherron.com/Pinball-Wizard/
+2. Follow the directions on screen to start playing!
+
+Option 2
 1. Clone the repository onto your local machine
 2. Run the host script
   - For Mac users: Open host.command
@@ -21,9 +25,6 @@ Option 1
 3. Navigate to http://localhost:8000/ on your web browser
 4. Follow the directions on screen to start playing!
 
-Option 2
-1. Navigate to www.brandx.net/cs174/team-project-pinball-sorcerers-master/
-2. Follow the directions on screen to start playing!
 
 ## About our game and how to play
 
