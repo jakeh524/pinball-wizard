@@ -1317,11 +1317,8 @@ export class PinballWorld extends Simulation {
 
       document.title = "Pinball Wizard - UCLA CS 174";
       // camera location
-      this.initial_camera_location = Mat4.look_at(
-         vec3(8 * 35, -80.2 * 2, 6 * 20),
-         vec3(35, 55, 0),
-         vec3(0, 0, 1)
-      );
+      this.initial_camera_location = Mat4.look_at(vec3(35, -55, 100), vec3(35, 55, 0), vec3(0, 1, 1));
+      
       this.camera_focus = null;
       this.start_game_flag == false;
 
@@ -2403,7 +2400,7 @@ export class PinballWorld extends Simulation {
          );
 
          program_state.set_camera(Mat4.inverse(ball_mat));
-      } else if (this.frontview) {
+      } else if (!this.frontview) {
          const desired = Mat4.inverse(
             Mat4.look_at(vec3(35, -55, 100), vec3(35, 55, 0), vec3(0, 1, 1))
          );
