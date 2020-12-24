@@ -2331,12 +2331,12 @@ export class PinballWorld extends Simulation {
       this.key_triggered_button("Entryway View", ["-"], () => {
          change_camera_sound.play();
          this.ball_focus = false;
-         this.frontview = false;
+         this.frontview = true;
       });
       this.key_triggered_button("Front view", ["+"], () => {
          change_camera_sound.play();
          this.ball_focus = false;
-         this.frontview = true;
+         this.frontview = false;
       });
       this.new_line();
 
