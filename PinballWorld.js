@@ -2400,7 +2400,7 @@ export class PinballWorld extends Simulation {
          );
 
          program_state.set_camera(Mat4.inverse(ball_mat));
-      } else if (!this.frontview) {
+      } else if (this.frontview) {
          const desired = Mat4.inverse(Mat4.look_at(vec3(8 * 35, -80.2 * 2, 6 * 20), vec3(35, 55, 0), vec3(0, 0, 1)));
                
          //We take basis for planet we want to attach to and move 5 units in the positive direction on z-axis (equivalent to moving camera
